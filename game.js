@@ -45,6 +45,98 @@ for (const layout of forestLayouts) roomPlatforms.push(layout);
 for (let i = 0; i < 5; i++) roomPlatforms.push([{x:0,y:485,w:960,h:55}]);
 roomPlatforms.push([{x:0,y:485,w:960,h:55},{x:170,y:375,w:115,h:18},{x:675,y:375,w:115,h:18}]);
 roomPlatforms.push([{x:0,y:485,w:960,h:55},{x:200,y:405,w:140,h:18},{x:470,y:345,w:130,h:18},{x:720,y:405,w:130,h:18}]);
+const wildZones = [
+  {name: '樹根之路', kind: 'meadow', platforms: [{x:0,y:485,w:960,h:55},{x:180,y:405,w:140,h:18},{x:440,y:345,w:140,h:18},{x:720,y:405,w:130,h:18}], enemies: [{type:0,x:390},{type:1,x:740}]},
+  {name: '風鈴原野', kind: 'meadow', platforms: [{x:0,y:485,w:340,h:55},{x:430,y:485,w:530,h:55},{x:170,y:405,w:125,h:18},{x:460,y:370,w:140,h:18},{x:710,y:405,w:130,h:18}], enemies: [{type:0,x:220},{type:1,x:640},{type:2,x:780}]},
+  {name: '斷風峽口', kind: 'gorge', platforms: [{x:0,y:485,w:350,h:55},{x:570,y:485,w:390,h:55},{x:130,y:390,w:110,h:18},{x:700,y:390,w:130,h:18}], enemies: [{type:0,x:170},{type:1,x:720}]},
+  {name: '獵痕小徑', kind: 'trail', platforms: [{x:0,y:485,w:960,h:55},{x:130,y:395,w:130,h:18},{x:340,y:330,w:130,h:18},{x:510,y:400,w:130,h:18},{x:680,y:340,w:160,h:18}], enemies: [{type:0,x:270},{type:1,x:650},{type:2,x:790}]},
+  {name: '獵者營地', kind: 'camp', platforms: [{x:0,y:485,w:960,h:55},{x:150,y:390,w:120,h:18},{x:690,y:390,w:120,h:18}], enemies: []},
+  {name: '暮霧哨道', kind: 'trail', platforms: [{x:0,y:485,w:960,h:55},{x:170,y:375,w:120,h:18},{x:675,y:375,w:120,h:18}], enemies: []}
+];
+function isWildRoom() { return room >= 28 && room <= 35; }
+function wildRoomName() { return room===35 ? '故人決鬥場' : room === 34 ? '齒輪下劈試煉' : wildZones[room - 28].name; }
+for (let i = 0; i < wildZones.length; i++) roomPlatforms[28 + i] = wildZones[i].platforms;
+roomPlatforms[34] = [{x:0,y:485,w:170,h:55},{x:800,y:275,w:160,h:18}];
+roomPlatforms[35]=[{x:0,y:485,w:960,h:55},{x:185,y:375,w:110,h:18},{x:665,y:375,w:110,h:18}];
+const dockZones = [
+  {name:'墜落廢塢',platforms:[{x:0,y:485,w:960,h:55},{x:170,y:405,w:130,h:18},{x:650,y:380,w:145,h:18}],enemies:[]},
+  {name:'熔爐棧橋',platforms:[{x:0,y:485,w:300,h:55},{x:430,y:485,w:200,h:55},{x:750,y:485,w:210,h:55},{x:230,y:395,w:115,h:18},{x:465,y:360,w:120,h:18},{x:695,y:395,w:110,h:18}],enemies:[{type:0,x:520},{type:1,x:805},{type:2,x:650}]},
+  {name:'吊鏈升降井',platforms:[{x:0,y:485,w:280,h:55},{x:710,y:485,w:250,h:55},{x:230,y:405,w:115,h:18},{x:410,y:330,w:120,h:18},{x:580,y:400,w:115,h:18,dockLift:true,direction:-1},{x:710,y:345,w:120,h:18},{x:800,y:405,w:85,h:18}],enemies:[{type:1,x:790},{type:2,x:450}]},
+  {name:'舊泵房',platforms:[{x:0,y:485,w:960,h:55},{x:160,y:405,w:135,h:18},{x:400,y:335,w:135,h:18},{x:670,y:405,w:135,h:18}],enemies:[{type:0,x:380},{type:1,x:690}]}
+];
+for(let i=0;i<dockZones.length;i++)roomPlatforms[36+i]=dockZones[i].platforms;
+function isDockRoom(){return room>=36&&room<=39;}
+function roamingEnemiesHere(){return isWildRoom()||isDockRoom();}
+let dockEntered=false,dockFallPending=false,dockFallTick=-1,dockArrivalStage=0,dockShortcut=false;
+const dockArrivalLines=[
+  '女同事：「……下面竟然還有一座工廠。」',
+  '主角：「別勉強。你的核心還沒穩住。」',
+  '主角：「留在燈旁邊。我去找出路，會回來接你。」'
+];
+function dockArrivalActive(){return room===36&&dockArrivalStage>0&&dockArrivalStage<=dockArrivalLines.length;}
+const dockEnemyTypes=[{name:'染疫熔錘鑄工',hp:4,color:'#a66c47'},{name:'輻射熔渣炮手',hp:3,color:'#987852'},{name:'吊鏈熱束機',hp:2,color:'#927466'}];
+const dockJet={x:560,y:395,w:45,h:90};
+const dockLever={x:835,y:430,w:30,h:55};
+const wildPogoGate = {x: 730, y: 260, w: 45, h: 80};
+const wildPogoGoal = {x: 850, y: 235, w: 34, h: 40};
+const wildPogoTargets = [{x:280,y:440,w:54,h:18,flash:0},{x:450,y:375,w:54,h:18,flash:0},{x:620,y:310,w:54,h:18,flash:0}];
+const wildTrap = {x: 425, y: 465, w: 60, h: 20};
+let wildTicks = 0, wildGauntletCleared = false, wildPogoRewardClaimed = false, wildPogoFinished = false, gauntletWave = 0, gauntletWait = 0;
+const wildEnemyTypes = [{name:'染疫草刃衛',hp:2,color:'#a49c6a'},{name:'輻射風弩手',hp:3,color:'#7b8870'},{name:'變異巡空蜂',hp:2,color:'#a68a5e'}];
+let duelistDefeated=false,duelIntroIndex=0;
+const duelistLines=[
+  '女同事：「……是你？十年前，我以為你已經……」',
+  '主角：「我回來了。你身上那些裂痕，是輻射？」',
+  '女同事：「別靠近！我快要控制不住這把劍了……」',
+  '主角：「……我不會把你留在這裡。」'
+];
+const duelist={x:690,y:431,w:36,h:54,health:12,maxHealth:12,irradiated:true,state:'idle',timer:65,direction:-1,phase:1,attackIndex:0,move:'dash',vy:0,flash:0,musicTick:0,combo:0};
+function duelIntroActive() {return room===35&&!duelistDefeated&&duelIntroIndex<duelistLines.length;}
+function duelistActive() {return room===35&&!duelistDefeated&&duelist.health>0&&!duelIntroActive();}
+function resetDuelist() {
+  Object.assign(duelist,{x:690,y:431,health:duelistDefeated?0:12,state:'idle',timer:65,direction:-1,phase:1,attackIndex:0,move:'dash',vy:0,flash:0,musicTick:0,combo:0});duelIntroIndex=0;
+}
+let altar1Claimed = false, spearQueued = false, spearCooldown = 0;
+const wildAltar1 = {x:210,y:351,w:40,h:54};
+function playerMaxHealth() { return 3 + (altar1Claimed ? 1 : 0); }
+const ironSpear = {active:false,x:0,y:0,w:48,h:14,vx:0,phase:'out',ticks:0,hit:new Set()};
+function resetIronSpear() { ironSpear.active=false;ironSpear.hit.clear();spearQueued=false;spearCooldown=0; }
+const wildEnemies = [];
+const gauntletWaves=[[{type:0,x:650}],[{type:0,x:350},{type:1,x:720}],[{type:0,x:320},{type:1,x:740},{type:2,x:610}]];
+function spawnWildEnemies(specs) {
+  wildEnemies.length = 0;
+  specs.forEach((spec, index) => {
+    const flyer = spec.type === 2;
+    const floor = roomPlatforms[room].find(p => p.y === 485 && spec.x >= p.x && spec.x + 34 <= p.x + p.w);
+    const low = flyer ? Math.max(90, spec.x - 85) : Math.max(floor.x + 35, spec.x - 70);
+    const high = flyer ? Math.min(840, spec.x + 85) : Math.min(floor.x + floor.w - 68, spec.x + 70);
+    wildEnemies.push({x:spec.x,y:flyer?285:445,w:34,h:40,type:spec.type,irradiated:true,health:wildEnemyTypes[spec.type].hp,maxHealth:wildEnemyTypes[spec.type].hp,
+      direction:-1,state:'patrol',timer:0,cooldown:110+index*45,flash:0,stun:0,phase:index,minX:low,maxX:high,homeX:spec.x,homeY:flyer?285:445,
+      shot:{x:0,y:0,w:16,h:8,vx:0,vy:0,life:0,active:false}});
+  });
+}
+function startPogoRun(message = '按住 S 加滑鼠左鍵下劈齒輪，反彈後繼續前進。') {
+  resetIronSpear();
+  Object.assign(player,{x:70,y:443,vx:0,vy:0,grounded:true,facing:1});
+  keys.clear(); jumpQueued=false; jumpBuffer=0; coyoteTime=0; wallJumpLock=0; attackQueued=false; attackTimer=0; attackCooldown=0; dashQueued=false; dashTimer=0; dashCooldown=0;
+  toolQueued=false; spearQueued=false; toolProjectile.active=false; healQueued=false; healTimer=0; wildPogoFinished=false;
+  wildPogoTargets.forEach(target=>target.flash=0); logMessage=message; logTimer=220;
+}
+function resetWildRoom() {
+  wildTicks=0; wildEnemies.length=0; gauntletWave=0; gauntletWait=0;
+  if(isDockRoom()){
+    const lift=roomPlatforms[room].find(p=>p.dockLift);if(lift){lift.y=400;lift.direction=-1;}
+    spawnWildEnemies(dockZones[room-36].enemies);
+    for(const foe of wildEnemies)foe.health=foe.maxHealth=dockEnemyTypes[foe.type].hp;
+    return;
+  }
+  if (!isWildRoom()) return;
+  if (room===35) {resetDuelist();return;}
+  if (room===34) { startPogoRun(); return; }
+  if (room===33 && !wildGauntletCleared) { gauntletWave=1; gauntletWait=75; return; }
+  spawnWildEnemies(wildZones[room-28].enemies);
+}
+
 let visitedRooms = Array.from({length: roomPlatforms.length}, (_, i) => i === 0);
 let forestBossKey = false, forestBossDefeated = false, forestSeedOwned = false, forestSeedPlanted = false, importantGear1 = false, farewellStage = 0, reunionStage = 0;
 const reunionLines = [
@@ -115,6 +207,7 @@ const crates = [
 for (let i = 0; i < 15; i++) crates.push({x: 450 + (i % 3) * 60, y: 451, w: 34, h: 34, health: 2, flash: 0, dropped: false});
 crates.push({x: -1000, y: 0, w: 0, h: 0, health: 0, flash: 0, dropped: false});
 crates.push({x: -1000, y: 0, w: 0, h: 0, health: 0, flash: 0, dropped: false});
+while (crates.length < roomPlatforms.length) crates.push({x:-1000,y:0,w:0,h:0,health:0,flash:0,dropped:false});
 function resetCrates() { for (const crate of crates) { crate.health = 2; crate.flash = 0; crate.dropped = false; } }
 function resetRoomCrate() { const crate = crates[room]; crate.health = 2; crate.flash = 0; crate.dropped = false; }
 const logs = [
@@ -198,12 +291,16 @@ const elevatorCheckpoint = {x: 455, y: 284, w: 32, h: 46, activated: false};
 const greenhouseCheckpoint = {x: 445, y: 289, w: 32, h: 46, activated: false};
 const townCheckpoint = {x: 350, y: 439, w: 32, h: 46, activated: false};
 const forestCheckpoint = {x: 460, y: 439, w: 32, h: 46, activated: false};
+const wildCheckpoint = {x:465,y:439,w:32,h:46,activated:false};
+const dockCheckpoint = {x:310,y:439,w:32,h:46,activated:false};
 const travelDestinations = [
   {id: 'boiler', name: '鍋爐室', room: 0, station: checkpoint},
   {id: 'elevator', name: '升降機井', room: 2, station: elevatorCheckpoint},
   {id: 'greenhouse', name: '廢棄溫室', room: 4, station: greenhouseCheckpoint},
   {id: 'town', name: '鐘樓鎮', room: 10, station: townCheckpoint},
-  {id: 'forest', name: '果園休息地', room: 19, station: forestCheckpoint}
+  {id: 'forest', name: '果園休息地', room: 19, station: forestCheckpoint},
+  {id:'wild',name:'獵者營地',room:32,station:wildCheckpoint},
+  {id:'dock',name:'墜落廢塢',room:36,station:dockCheckpoint}
 ];
 function nearbyStation() {
   return travelDestinations.find(destination => {
@@ -216,7 +313,7 @@ let townMenu = null, townNotice = '', townGuideMask = 0, townCloak = false, town
 let townCloakStyle = 0, townCloakOwned = [false, false, false, false, false], townPrizes = [0, 0, 0, 0, 0];
 const townGoods = [
   {name: '小型修理包', price: 8, health: 1}, {name: '雙重修理包', price: 14, health: 2},
-  {name: '完整修理包', price: 18, health: 3}, {name: '蒸汽罐', price: 5, steam: 1}, {name: '大容量蒸汽罐', price: 12, steam: 3}
+  {name: '完整修理包', price: 18, health: 99}, {name: '蒸汽罐', price: 5, steam: 1}, {name: '大容量蒸汽罐', price: 12, steam: 3}
 ];
 const townClothes = [
   {name: '暖紅披風', price: 15, color: '#a75548'}, {name: '深海披風', price: 18, color: '#466f91'},
@@ -232,16 +329,16 @@ const townShops = [
 function townShopNear(shop) { return room === 10 && Math.abs(player.x + player.w / 2 - shop.x) < 55 && player.y + player.h > 420; }
 function openTownShop(shop) {
   townMenu = shop.id; townNotice = ''; keys.clear();
-  jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued = false;
+  jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued=false; spearQueued=false;
 }
 function townShopAction(index) {
   if (townMenu === 'general') {
     const item = townGoods[index]; if (!item) return;
-    if (item.health && health >= 3) { townNotice = '生命已滿，不需要修理。'; return; }
+    if (item.health && health >= playerMaxHealth()) { townNotice = '生命已滿，不需要修理。'; return; }
     if (item.steam && steam >= 3) { townNotice = '蒸汽已滿，不需要補充。'; return; }
     if (money < item.price) { townNotice = '齒輪幣不足，需要 ' + item.price + ' 枚。'; return; }
     money -= item.price;
-    if (item.health) { health = Math.min(3, health + item.health); healingGlow(); }
+    if (item.health) { health = Math.min(playerMaxHealth(), health + item.health); healingGlow(); }
     else steam = Math.min(3, steam + item.steam);
     townNotice = '使用了' + item.name + '。';
   } else if (townMenu === 'clothes') {
@@ -268,9 +365,13 @@ function townShopAction(index) {
 const child = {x: 545, y: 447, w: 24, h: 38};
 let activeCheckpoint = null;
 function checkpointSpawn() {
+  if(dockFallPending)return {room:35,point:{x:600,y:443}};
+  if(dockArrivalActive()||(dockEntered&&dockArrivalStage>0&&dockArrivalStage<=dockArrivalLines.length))return {room:36,point:dockCheckpoint};
+  if(activeCheckpoint==='dock'&&dockCheckpoint.activated)return {room:36,point:dockCheckpoint};
   if (postFall && reunionStage >= 1 && reunionStage <= reunionLines.length) return {room: 10, point: {x: 100, y: 443}};
   if (postFall && farewellStage >= 1 && farewellStage <= farewellLines.length) return {room: 12, point: {x: 480, y: 443}};
   if (postFall && (familyStage === 6 || familyStage === 7)) return {room: 11, point: {x: 330, y: 443}};
+  if (activeCheckpoint==='wild' && wildCheckpoint.activated) return {room:32,point:wildCheckpoint};
   if (postFall && activeCheckpoint === 'forest' && forestCheckpoint.activated) return {room: 19, point: forestCheckpoint};
   if (postFall && activeCheckpoint === 'town' && townCheckpoint.activated) return {room: 10, point: townCheckpoint};
   if (postFall && activeCheckpoint === 'greenhouse' && greenhouseCheckpoint.activated) return {room: 4, point: greenhouseCheckpoint};
@@ -289,7 +390,7 @@ function checkpointSpawn() {
 const repair = {x: 0, y: 465, w: 20, h: 20, available: false};
 const vent = {x: 350, y: 485, w: 40, h: 72, cycle: 0};
 const sideVent = {x: 745, y: 365, w: 140, h: 30, cycle: 0};
-let health = 3, steam = 0, healQueued = false, invulnerability = 0, gameOver = false, won = false;
+let health = playerMaxHealth(), steam = 0, healQueued = false, invulnerability = 0, gameOver = false, won = false;
 const HEAL_DURATION = 75, DEATH_DURATION = 54, RESPAWN_DURATION = 48;
 let healTimer = 0, healGlowTimer = 0, deathTimer = 0, respawnTimer = 0;
 let storyIntroTimer = 480;
@@ -333,7 +434,7 @@ function dropCoins(x, y, value) {
 }
 const toolProjectile = {x: 0, y: 0, w: 0, h: 0, vx: 0, life: 0, active: false, type: 'needle'};
 let toolAmmo = 4, toolQueued = false, equipmentNotice = '';
-function resetEquipment() { Object.assign(equipment, {red: 'needle', blue: 'guard', yellow: 'regulator'}); toolAmmo = 4; toolQueued = false; toolProjectile.active = false; }
+function resetEquipment() { Object.assign(equipment, {red: 'needle', blue: 'guard', yellow: 'regulator'}); toolAmmo = 4; toolQueued=false; spearQueued=false; toolProjectile.active = false; }
 function selectEquipment(slot, item) {
   if (!item.unlocked()) { equipmentNotice = item.hint || '工具尚未解鎖'; return; }
   equipment[slot] = item.id;
@@ -402,10 +503,16 @@ soundButton.addEventListener('click', () => {
   try { localStorage.setItem('steam-city-sound', muted ? 'off' : 'on'); } catch (error) { /* Keep the choice for this session. */ }
   if (!muted) unlockAudio();
 });
-const controls = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyA','KeyD','KeyW','KeyS','KeyR','KeyE','KeyQ','KeyJ','KeyM','KeyH','KeyI','KeyF','KeyG','KeyT','Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Tab','Escape','ShiftLeft','ShiftRight'];
+const controls = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyA','KeyD','KeyW','KeyS','KeyR','KeyE','KeyQ','KeyV','KeyJ','KeyM','KeyH','KeyI','KeyF','KeyG','KeyT','Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Tab','Escape','ShiftLeft','ShiftRight'];
 window.addEventListener('keydown', e => {
   unlockAudio();
   if (controls.includes(e.code)) e.preventDefault();
+  if(dockFallTick>=0 && !['Escape','KeyM'].includes(e.code))return;
+  if(dockArrivalActive()){if(!e.repeat&&e.code==='KeyE'){dockArrivalStage++;keys.clear();saveProgress();}return;}
+  if(duelIntroActive()) {
+    if(!e.repeat && e.code==='KeyE'){duelIntroIndex++;keys.clear();if(!duelIntroActive()){logMessage='留意她的招架姿勢，避開突刺後反擊。';logTimer=180;}}
+    return;
+  }
   if (reunionActive()) {
     if (!e.repeat && e.code === 'KeyE') {
       reunionStage++; keys.clear();
@@ -432,7 +539,7 @@ window.addEventListener('keydown', e => {
       else if (townMenu) townMenu = null;
       else if (travelOpen) travelOpen = false;
       else { paused = !paused; pauseButton.textContent = paused ? '繼續' : '暫停'; }
-      keys.clear(); jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued = false;
+      keys.clear(); jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued=false; spearQueued=false;
     }
     return;
   }
@@ -440,7 +547,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyH') {
     if (!e.repeat && !gameOver && !won) {
       helpOpen = !helpOpen; mapOpen = false; journalOpen = false; equipmentOpen = false; shopOpen = false; travelOpen = false; townMenu = null; keys.clear();
-      jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued = false;
+      jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued=false; spearQueued=false;
     }
     return;
   }
@@ -449,7 +556,7 @@ window.addEventListener('keydown', e => {
       if (familyStage === 6) {
         familyStage = 7; logTimer = 0;
       } else {
-        familyStage = 8; health = 3; steam = 0; player.vx = 0; player.vy = 0;
+        familyStage = 8; health = playerMaxHealth(); steam = 0; player.vx = 0; player.vy = 0;
         Object.assign(player, {x: 330, y: 443, grounded: true, facing: 1});
         logMessage = '媽媽：「早安。你醒了，感覺好些了嗎？」'; logTimer = 240;
       }
@@ -471,6 +578,8 @@ window.addEventListener('keydown', e => {
     if (!e.repeat && e.code === 'Digit3') travelTo(2);
     if (!e.repeat && e.code === 'Digit4') travelTo(3);
     if (!e.repeat && e.code === 'Digit5') travelTo(4);
+    if (!e.repeat && e.code === 'Digit6') travelTo(5);
+    if (!e.repeat && e.code === 'Digit7') travelTo(6);
     return;
   }
   if (shopOpen) {
@@ -484,7 +593,7 @@ window.addEventListener('keydown', e => {
     if (!e.repeat && !gameOver && !won) {
       if (!equipmentOpen && !nearbyStation()) { logMessage = '請到已啟動的休息站附近更換裝備。'; logTimer = 150; return; }
       equipmentOpen = !equipmentOpen; mapOpen = false; journalOpen = false; keys.clear();
-      jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued = false;
+      jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued=false; spearQueued=false;
       equipmentNotice = '';
     }
     return;
@@ -498,26 +607,28 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyJ') {
     if (!e.repeat && !gameOver && !won) {
       journalOpen = !journalOpen; mapOpen = false; keys.clear(); jumpQueued = false; jumpBuffer = 0;
-      attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued = false;
+      attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued=false; spearQueued=false;
     }
     return;
   }
   if (journalOpen) return;
   if (e.code === 'Tab') {
     if (!e.repeat && !gameOver && !won) {
-      mapOpen = !mapOpen; keys.clear(); jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued = false;
+      mapOpen = !mapOpen; keys.clear(); jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued=false; spearQueued=false;
     }
     return;
   }
   if (mapOpen) return;
   if (!e.repeat && e.code === 'KeyG' && !gameOver && !won) {
     if (!nearbyStation()) { logMessage = '請靠近已啟動的休息站使用傳送。'; logTimer = 150; }
-    else { travelOpen = true; travelNotice = ''; keys.clear(); healTimer = 0; jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued = false; }
+    else { travelOpen = true; travelNotice = ''; keys.clear(); healTimer = 0; jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued=false; spearQueued=false; }
     return;
   }
+  if (!e.repeat && e.code === 'KeyT' && room===34 && !gameOver && !won) { startPogoRun('重新開始下劈試煉。'); return; }
   if (!e.repeat && e.code === 'KeyT' && room === 5 && !gameOver && !won) { startCourse('重新開始跑酷！'); return; }
   if (!e.repeat && e.code === 'KeyE') interactQueued = true;
   if (!e.repeat && e.code === 'KeyQ') healQueued = true;
+  if (!e.repeat && e.code==='KeyV') spearQueued=true;
   if (!e.repeat && e.code === 'KeyF') { if (postFall) { logMessage = '工具在墜落時損壞了。'; logTimer = 120; } else toolQueued = true; }
   if (!e.repeat && e.code === 'KeyR' && (gameOver || won)) resetGame();
   if (!e.repeat && (e.code === 'ShiftLeft' || e.code === 'ShiftRight')) { if (postFall && !importantGear1) { logMessage = '蒸汽衝刺在墜落時損壞了。'; logTimer = 120; } else dashQueued = true; }
@@ -526,7 +637,7 @@ window.addEventListener('keydown', e => {
 });
 canvas.addEventListener('mousedown', e => {
   unlockAudio();
-  if (farewellActive() || reunionActive()) return;
+  if (dockFallTick>=0 || dockArrivalActive() || farewellActive() || reunionActive() || duelIntroActive()) return;
   if (e.button !== 0 || deathTimer > 0 || respawnTimer > 0 || gameOver || won) return;
   if (townMenu) {
     const rect = canvas.getBoundingClientRect();
@@ -541,8 +652,8 @@ canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * canvas.width / rect.width;
     const y = (e.clientY - rect.top) * canvas.height / rect.height;
-    const index = Math.floor((y - 125) / 65);
-    if (x >= 220 && x <= 740 && index >= 0 && index < travelDestinations.length && y < 125 + index * 65 + 55) travelTo(index);
+    const index = Math.floor((y - 125) / 56);
+    if (x >= 220 && x <= 740 && index >= 0 && index < travelDestinations.length && y < 125 + index * 56 + 50) travelTo(index);
     return;
   }
   if (shopOpen) {
@@ -575,10 +686,10 @@ window.addEventListener('keyup', e => {
     variableJump = false;
   }
 });
-window.addEventListener('blur', () => { if (!gameOver && !won && !mapOpen && !journalOpen && !helpOpen && !equipmentOpen && !shopOpen && !travelOpen) { paused = true; pauseButton.textContent = '繼續'; } keys.clear(); jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued = false; });
+window.addEventListener('blur', () => { if (!gameOver && !won && !mapOpen && !journalOpen && !helpOpen && !equipmentOpen && !shopOpen && !travelOpen) { paused = true; pauseButton.textContent = '繼續'; } keys.clear(); jumpQueued = false; jumpBuffer = 0; attackQueued = false; dashQueued = false; interactQueued = false; healQueued = false; toolQueued=false; spearQueued=false; });
 function saveProgress() {
   try {
-    localStorage.setItem(saveKey, JSON.stringify({postFall, childConversation, familyStage, townGuideMask, townCloak, townPrizeCount, townCloakOwned, townCloakStyle, townPrizes, visitedRooms, checkpoint: checkpoint.activated, elevatorCheckpoint: elevatorCheckpoint.activated, greenhouseCheckpoint: greenhouseCheckpoint.activated, forestBossKey, forestBossDefeated, forestSeedOwned, forestSeedPlanted, importantGear1, farewellStage, reunionStage, townCheckpoint: townCheckpoint.activated, forestCheckpoint: forestCheckpoint.activated, activeCheckpoint, core: coreCollected, reactor: reactorPowered, bossDefeated, money, purchases, courseBestTicks, courseRewardClaimed, doubleJump: doubleJumpUnlocked, loadout: equipment, toolAmmo, gears: memoryGears.map(gear => gear.collected), logs: allLogs.map(log => log.read === true)}));
+    localStorage.setItem(saveKey, JSON.stringify({postFall, childConversation, familyStage, townGuideMask, townCloak, townPrizeCount, townCloakOwned, townCloakStyle, townPrizes, visitedRooms, checkpoint: checkpoint.activated, elevatorCheckpoint: elevatorCheckpoint.activated, greenhouseCheckpoint: greenhouseCheckpoint.activated, forestBossKey, forestBossDefeated, forestSeedOwned, forestSeedPlanted, importantGear1, farewellStage, reunionStage, townCheckpoint: townCheckpoint.activated, forestCheckpoint: forestCheckpoint.activated, wildCheckpoint:wildCheckpoint.activated, wildGauntletCleared, wildPogoRewardClaimed, altar1Claimed, duelistDefeated, dockEntered, dockFallPending, dockArrivalStage, dockShortcut, dockCheckpoint:dockCheckpoint.activated, activeCheckpoint, core: coreCollected, reactor: reactorPowered, bossDefeated, money, purchases, courseBestTicks, courseRewardClaimed, doubleJump: doubleJumpUnlocked, loadout: equipment, toolAmmo, gears: memoryGears.map(gear => gear.collected), logs: allLogs.map(log => log.read === true)}));
     storageAvailable = true; saveFeedbackTimer = 120;
   } catch (error) { storageAvailable = false; }
 }
@@ -604,7 +715,12 @@ function loadProgress() {
     greenhouseCheckpoint.activated = saved.greenhouseCheckpoint === true;
     townCheckpoint.activated = saved.townCheckpoint === true;
     forestCheckpoint.activated = saved.forestCheckpoint === true;
-    activeCheckpoint = ['boiler', 'elevator', 'greenhouse', 'town', 'forest'].includes(saved.activeCheckpoint) ? saved.activeCheckpoint : null;
+    altar1Claimed=saved.altar1Claimed===true;duelistDefeated=saved.duelistDefeated===true;
+    wildCheckpoint.activated=saved.wildCheckpoint===true; wildGauntletCleared=saved.wildGauntletCleared===true; wildPogoRewardClaimed=saved.wildPogoRewardClaimed===true;
+    dockEntered=saved.dockEntered===true;dockFallPending=duelistDefeated&&!dockEntered;dockFallTick=-1;
+    dockArrivalStage=Number.isInteger(saved.dockArrivalStage)?Math.max(0,Math.min(4,saved.dockArrivalStage)):0;
+    dockShortcut=dockEntered&&saved.dockShortcut===true;dockCheckpoint.activated=dockEntered;
+    activeCheckpoint = ['boiler', 'elevator', 'greenhouse', 'town', 'forest', 'wild', 'dock'].includes(saved.activeCheckpoint) ? saved.activeCheckpoint : null;
     coreCollected = saved.core === true;
     reactorPowered = saved.reactor === true;
     bossDefeated = saved.bossDefeated === true;
@@ -639,6 +755,7 @@ function loadProgress() {
     }
     while (visitedRooms.length < roomPlatforms.length) visitedRooms.push(false);
     if (postFall) { doubleJumpUnlocked = false; resetEquipment(); toolAmmo = 0; }
+    health=playerMaxHealth();
     const savedSpawn = checkpointSpawn();
     visitedRooms[savedSpawn.room] = true;
     room = savedSpawn.room; player.x = savedSpawn.point.x; player.y = savedSpawn.point.y;
@@ -646,12 +763,14 @@ function loadProgress() {
     if (room === 10 && visitedRooms[28] && farewellStage > farewellLines.length && reunionStage === 0) { reunionStage = 1; saveProgress(); }
     if (reunionActive()) townChildX = Math.min(870, player.x + 55);
     if (room === 2) resetDrone();
+    resetWildRoom();
   } catch (error) { storageAvailable = false; }
 }
 function resetGame() {
+  resetIronSpear();
   wallJumpLock = 0;
   const returningFromDeath = gameOver;
-  if (won) { postFall = false; childConversation = 0; familyStage = 0; townGuideMask = 0; townCloak = false; townPrizeCount = 0; townCloakStyle = 0; townCloakOwned = [false, false, false, false, false]; townPrizes = [0, 0, 0, 0, 0]; storyIntroTimer = 480; visitedRooms = Array.from({length: roomPlatforms.length}, (_, i) => i === 0); checkpoint.activated = false; elevatorCheckpoint.activated = false; greenhouseCheckpoint.activated = false; townCheckpoint.activated = false; forestCheckpoint.activated = false; activeCheckpoint = null; coreCollected = false; reactorPowered = false; bossDefeated = false; forestBossKey = false; forestBossDefeated = false; forestSeedOwned = false; forestSeedPlanted = false; importantGear1 = false; farewellStage = 0; reunionStage = 0; doubleJumpUnlocked = false; courseBestTicks = null; courseRewardClaimed = false; money = 0; Object.assign(purchases, {piercer: false, fortress: false, magnet: false}); memoryGears.forEach(gear => { gear.collected = false; }); allLogs.forEach(log => { log.read = false; }); resetEquipment(); saveProgress(); }
+  if (won) { postFall = false; childConversation = 0; familyStage = 0; townGuideMask = 0; townCloak = false; townPrizeCount = 0; townCloakStyle = 0; townCloakOwned = [false, false, false, false, false]; townPrizes = [0, 0, 0, 0, 0]; storyIntroTimer = 480; visitedRooms = Array.from({length: roomPlatforms.length}, (_, i) => i === 0); checkpoint.activated = false; elevatorCheckpoint.activated = false; greenhouseCheckpoint.activated = false; townCheckpoint.activated = false; forestCheckpoint.activated = false; wildCheckpoint.activated=false; wildGauntletCleared=false; wildPogoRewardClaimed=false; altar1Claimed=false;duelistDefeated=false;dockEntered=false;dockFallPending=false;dockFallTick=-1;dockArrivalStage=0;dockShortcut=false;dockCheckpoint.activated=false; activeCheckpoint = null; coreCollected = false; reactorPowered = false; bossDefeated = false; forestBossKey = false; forestBossDefeated = false; forestSeedOwned = false; forestSeedPlanted = false; importantGear1 = false; farewellStage = 0; reunionStage = 0; doubleJumpUnlocked = false; courseBestTicks = null; courseRewardClaimed = false; money = 0; Object.assign(purchases, {piercer: false, fortress: false, magnet: false}); memoryGears.forEach(gear => { gear.collected = false; }); allLogs.forEach(log => { log.read = false; }); resetEquipment(); saveProgress(); }
   courseRunning = false; courseFinished = false; courseTicks = 0;
   coins.length = 0; sparks.length = 0; endingTime = 0; shakeTimer = 0; roomTitleTimer = 180; controlSwitch.active = false;
   const savedSpawn = checkpointSpawn();
@@ -660,21 +779,22 @@ function resetGame() {
   const spawn = savedSpawn.point;
   Object.assign(player, {x: spawn.x, y: spawn.y, vx: 0, vy: 0, grounded: false, facing: 1});
   Object.assign(enemy, {x: 500, direction: 1, health: 3, flash: 0, stun: 0, state: 'patrol', timer: 0, cooldown: 0});
-  resetDrone(); resetMovingPlatform(); resetBoss(); resetBranchEnemy(); flowerShot.active = false; flowerCooldown = 120; flowerWarning = 0;
+  resetDrone(); resetMovingPlatform(); resetBoss(); resetBranchEnemy(); resetWildRoom(); flowerShot.active = false; flowerCooldown = 120; flowerWarning = 0;
   repair.available = false; vent.cycle = 0; sideVent.cycle = 0; spring.flash = 0; supply.available = true; resetCrates();
   healTimer = 0; healGlowTimer = 0; deathTimer = 0; respawnTimer = returningFromDeath ? RESPAWN_DURATION : 0;
-  health = 3; steam = 0; toolAmmo = postFall ? 0 : 4; toolProjectile.active = false; toolQueued = false; saveProgress(); doubleJumpUsed = false; healQueued = false; invulnerability = returningFromDeath ? 60 : 0; gameOver = false; won = false; dashQueued = false; dashTimer = 0; dashCooldown = 0; attackTimer = 0; attackCooldown = 0; attackQueued = false; jumpQueued = false; jumpBuffer = 0; coyoteTime = 0; variableJump = false; keys.clear();
+  health = playerMaxHealth(); steam = 0; toolAmmo = postFall ? 0 : 4; toolProjectile.active = false; toolQueued=false; spearQueued=false; saveProgress(); doubleJumpUsed = false; healQueued = false; invulnerability = returningFromDeath ? 60 : 0; gameOver = false; won = false; dashQueued = false; dashTimer = 0; dashCooldown = 0; attackTimer = 0; attackCooldown = 0; attackQueued = false; jumpQueued = false; jumpBuffer = 0; coyoteTime = 0; variableJump = false; keys.clear();
 }
 function beginAfterFall() {
   postFall = true; importantGear1 = false; activeCheckpoint = null; childConversation = 0; won = false; doubleJumpUnlocked = false; resetEquipment(); toolAmmo = 0;
-  health = 3; steam = 0; invulnerability = 0; keys.clear();
-  jumpQueued = false; jumpBuffer = 0; dashQueued = false; dashTimer = 0; attackQueued = false; toolQueued = false; healQueued = false; interactQueued = false;
+  health = playerMaxHealth(); steam = 0; invulnerability = 0; keys.clear();
+  jumpQueued = false; jumpBuffer = 0; dashQueued = false; dashTimer = 0; attackQueued = false; toolQueued=false; spearQueued=false; healQueued = false; interactQueued = false;
   changeRoom(9);
   Object.assign(player, {x: 425, y: 443, vx: 0, vy: 0, grounded: true, facing: 1});
   logMessage = '墜落損壞了大部分能力；靠近小孩按 E 交談。'; logTimer = 240;
   saveProgress();
 }
 function changeRoom(nextRoom) {
+  resetIronSpear();
   wallJumpLock = 0;
   playSound(220, 0.18, 'triangle', 440);
   const previousRoom = room;
@@ -698,6 +818,7 @@ function changeRoom(nextRoom) {
   const branchTransition = (previousRoom === 0 && nextRoom === 6) || (previousRoom >= 6 && previousRoom <= 8 && nextRoom >= 6 && nextRoom <= 8) || (previousRoom === 6 && nextRoom === 0);
   const returningToShaft = previousRoom === 3 && nextRoom === 2;
   Object.assign(player, {x: returningToShaft ? 805 : enteringFromLeft ? 70 : 820, y: returningToShaft ? 143 : 443, vx: 0, vy: 0, grounded: true, facing: enteringFromLeft ? 1 : -1});
+  if (previousRoom===34 && nextRoom===31) Object.assign(player,{x:wildPogoGate.x+5,y:298,facing:-1});
   if (previousRoom === 28 && nextRoom === 12) Object.assign(player, {x: seedGate.x + 8, y: 298, facing: -1});
   if (previousRoom === 12 && nextRoom === 10) Object.assign(player, {x: forestGate.x + 8, y: 353, facing: -1});
   if (nextRoom === 10 && visitedRooms[28] && farewellStage > farewellLines.length && reunionStage === 0) {
@@ -708,8 +829,8 @@ function changeRoom(nextRoom) {
     else Object.assign(player, {x: nextRoom > previousRoom || previousRoom === 0 ? 820 : 70, y: 443, facing: nextRoom > previousRoom || previousRoom === 0 ? -1 : 1});
   }
   Object.assign(enemy, {x: 500, direction: 1, health: 3, flash: 0, stun: 0, state: 'patrol', timer: 0, cooldown: 0});
-  resetDrone(); resetMovingPlatform(); resetBoss(); resetBranchEnemy(); flowerShot.active = false; flowerCooldown = 120; flowerWarning = 0;
-  repair.available = false; vent.cycle = 0; sideVent.cycle = 0; spring.flash = 0; supply.available = true; resetRoomCrate(); toolProjectile.active = false; toolQueued = false; dashTimer = 0; jumpBuffer = 0; coyoteTime = 0; variableJump = false; doubleJumpUsed = false; attackTimer = 0;
+  resetDrone(); resetMovingPlatform(); resetBoss(); resetBranchEnemy(); resetWildRoom(); flowerShot.active = false; flowerCooldown = 120; flowerWarning = 0;
+  repair.available = false; vent.cycle = 0; sideVent.cycle = 0; spring.flash = 0; supply.available = true; resetRoomCrate(); toolProjectile.active = false; toolQueued=false; spearQueued=false; dashTimer = 0; jumpBuffer = 0; coyoteTime = 0; variableJump = false; doubleJumpUsed = false; attackTimer = 0;
 }
 function startCourse(message) {
   wallJumpLock = 0;
@@ -718,7 +839,7 @@ function startCourse(message) {
   const moving = roomPlatforms[5].find(item => item.courseMoving); moving.x = 510; moving.direction = 1;
   Object.assign(player, {x: 70, y: 443, vx: 0, vy: 0, grounded: true, facing: 1});
   keys.clear(); jumpQueued = false; jumpBuffer = 0; coyoteTime = 0; dashQueued = false; dashTimer = 0;
-  attackQueued = false; toolQueued = false; healQueued = false; healTimer = 0; toolProjectile.active = false;
+  attackQueued = false; toolQueued=false; spearQueued=false; healQueued = false; healTimer = 0; toolProjectile.active = false;
   logMessage = message; logTimer = 120;
 }
 function travelTo(index) {
@@ -763,7 +884,7 @@ restartButton.addEventListener('click', () => {
   storyIntroTimer = 480;
   postFall = false; childConversation = 0; familyStage = 0; townGuideMask = 0; townCloak = false; townPrizeCount = 0; townCloakStyle = 0; townCloakOwned = [false, false, false, false, false]; townPrizes = [0, 0, 0, 0, 0]; townMenu = null;
   visitedRooms = Array.from({length: roomPlatforms.length}, (_, i) => i === 0);
-  checkpoint.activated = false; elevatorCheckpoint.activated = false; greenhouseCheckpoint.activated = false; townCheckpoint.activated = false; forestCheckpoint.activated = false; activeCheckpoint = null; coreCollected = false; reactorPowered = false; bossDefeated = false; forestBossKey = false; forestBossDefeated = false; forestSeedOwned = false; forestSeedPlanted = false; importantGear1 = false; farewellStage = 0; reunionStage = 0; doubleJumpUnlocked = false; courseBestTicks = null; courseRewardClaimed = false; money = 0; Object.assign(purchases, {piercer: false, fortress: false, magnet: false});
+  checkpoint.activated = false; elevatorCheckpoint.activated = false; greenhouseCheckpoint.activated = false; townCheckpoint.activated = false; forestCheckpoint.activated = false; wildCheckpoint.activated=false; wildGauntletCleared=false; wildPogoRewardClaimed=false; altar1Claimed=false;duelistDefeated=false;dockEntered=false;dockFallPending=false;dockFallTick=-1;dockArrivalStage=0;dockShortcut=false;dockCheckpoint.activated=false; activeCheckpoint = null; coreCollected = false; reactorPowered = false; bossDefeated = false; forestBossKey = false; forestBossDefeated = false; forestSeedOwned = false; forestSeedPlanted = false; importantGear1 = false; farewellStage = 0; reunionStage = 0; doubleJumpUnlocked = false; courseBestTicks = null; courseRewardClaimed = false; money = 0; Object.assign(purchases, {piercer: false, fortress: false, magnet: false});
   memoryGears.forEach(gear => { gear.collected = false; }); allLogs.forEach(log => { log.read = false; }); resetEquipment();
   won = false; resetGame(); saveProgress();
 });
@@ -802,6 +923,240 @@ function damageBranchEnemy(grantsSteam, branchEnemy) {
     dropCoins(branchEnemy.x + branchEnemy.w / 2, branchEnemy.y + branchEnemy.h / 2, room === 8 ? 4 : 5);
     addSparks(branchEnemy.x + branchEnemy.w / 2, branchEnemy.y + branchEnemy.h / 2, '#f6a957');
     playSound(180, .22, 'sawtooth', 55);
+  }
+}
+function damageWildEnemy(foe, grantsSteam) {
+  if (foe.health<=0) return;
+  foe.health--; foe.flash=10; foe.stun=12; foe.state='recover'; foe.timer=65;
+  if (grantsSteam) steam=Math.min(3,steam+1);
+  addSparks(foe.x+17,foe.y+18,'#b8ef83'); shakeTimer=4; playSound(160,.1,'square',95);
+  if (foe.health===0) { foe.shot.active=false; dropCoins(foe.x+17,foe.y+18,5); }
+}
+function updateDockEnemy(foe){
+  if(foe.flash>0)foe.flash--;
+  if(foe.cooldown>0)foe.cooldown--;
+  if(foe.stun>0)foe.stun--;
+  else if(foe.state==='recover'){
+    if(--foe.timer<=0){foe.state='patrol';foe.cooldown=115;}
+  }else if(foe.state==='warning'){
+    if(foe.type===2)foe.x+=Math.max(-2.6,Math.min(2.6,foe.targetX-17-foe.x));
+    if(--foe.timer<=0){
+      if(foe.type===0)Object.assign(foe.shot,{active:true,kind:'shock',x:foe.x+17,y:469,w:42,h:16,vx:foe.direction*4.3,vy:0,life:55});
+      else if(foe.type===1){const dx=foe.targetX-foe.x-17;Object.assign(foe.shot,{active:true,kind:'slag',x:foe.x+9,y:foe.y+5,w:18,h:18,vx:dx/52,vy:-7.8,life:110});}
+      else Object.assign(foe.shot,{active:true,kind:'beam',x:foe.x+5,y:foe.y+34,w:24,h:Math.max(16,485-foe.y-34),vx:0,vy:0,life:28});
+      foe.state='recover';foe.timer=foe.type===0?85:130;playSound(foe.type===2?640:110,.2,'sawtooth',foe.type===2?220:60);
+    }
+  }else{
+    foe.phase+=.04;
+    if(foe.type===0){foe.x+=foe.direction*.45;if(foe.x<=foe.minX||foe.x>=foe.maxX)foe.direction*=-1;}
+    if(foe.type===2){foe.x=foe.homeX+Math.sin(foe.phase*.7)*65;foe.y=foe.homeY+Math.sin(foe.phase)*18;}
+    const dx=player.x+15-foe.x-17,dy=player.y-foe.y;
+    if(foe.cooldown===0&&!foe.shot.active&&Math.abs(dx)<(foe.type===0?185:340)&&(foe.type===2||Math.abs(dy)<85)){
+      foe.state='warning';foe.timer=foe.type===0?48:foe.type===1?65:70;foe.direction=dx<0?-1:1;foe.targetX=player.x+15;foe.targetY=485;
+    }
+  }
+  if(overlaps(player,foe))hurtPlayer(foe.x+17);
+  const shot=foe.shot;if(!shot.active)return;
+  shot.life--;
+  if(shot.kind==='slag'){
+    shot.x+=shot.vx;shot.y+=shot.vy;shot.vy+=.32;
+    if(shot.y+shot.h>=485){Object.assign(shot,{kind:'burn',x:shot.x-29,y:463,w:76,h:22,vx:0,vy:0,life:42});}
+  }else if(shot.kind==='shock')shot.x+=shot.vx;
+  if(overlaps(player,shot))hurtPlayer(shot.x+shot.w/2);
+  if(shot.life<=0||shot.x<-80||shot.x>1040)shot.active=false;
+}
+function updateWildRoom() {
+  if(room===35){updateDuelist();return;}
+  wildTicks++;
+  wildPogoTargets.forEach(target=>{if(target.flash>0)target.flash--;});
+  if (room===33 && !wildGauntletCleared) {
+    if (gauntletWait>0) {
+      gauntletWait--;
+      if (gauntletWait===0) {
+        spawnWildEnemies(gauntletWaves[gauntletWave-1]);
+        logMessage='輻射獵群來襲：第 '+gauntletWave+' 波！'; logTimer=90;
+      }
+    } else if (wildEnemies.every(foe=>foe.health<=0)) {
+      if (gauntletWave<3) { gauntletWave++; gauntletWait=90; wildEnemies.forEach(foe=>foe.shot.active=false); }
+      else { wildGauntletCleared=true; money=Math.min(999999,money+25);saveProgress();logMessage='三波車輪戰完成！獲得 25 枚齒輪幣。';logTimer=240;playSound(400,.3,'triangle',800); }
+    }
+  }
+  for (const foe of wildEnemies) {
+    if (foe.health<=0) continue;
+    if(isDockRoom()){updateDockEnemy(foe);continue;}
+    if (foe.flash>0) foe.flash--;
+    if (foe.stun>0) foe.stun--;
+    else {
+      if (foe.cooldown>0) foe.cooldown--;
+      if (foe.state==='recover') {
+        if (foe.type===2) { foe.x+=(foe.homeX-foe.x)*.06;foe.y+=(foe.homeY-foe.y)*.06; }
+        if (--foe.timer<=0) {foe.state='patrol';foe.cooldown=100;}
+      } else if (foe.state==='warning') {
+        if (--foe.timer<=0) {
+          if (foe.type===1) {
+            const dx=foe.targetX-(foe.x+17),dy=foe.targetY-(foe.y+20),distance=Math.max(1,Math.hypot(dx,dy));
+            Object.assign(foe.shot,{x:foe.x+9,y:foe.y+17,vx:dx/distance*4.2,vy:dy/distance*4.2,active:true,life:120});
+            foe.state='recover';foe.timer=100;playSound(470,.08,'triangle',220);
+          } else if (foe.type===2) {
+            foe.diveVX=(foe.targetX-(foe.x+17))/36;foe.diveVY=(foe.targetY-(foe.y+20))/36;
+            foe.state='dive';foe.timer=36;
+          } else {foe.state='lunge';foe.timer=24;}
+        }
+      } else if (foe.state==='lunge') {
+        foe.x+=foe.direction*4.5;
+        if (--foe.timer<=0 || foe.x<foe.minX || foe.x>foe.maxX) {foe.x=Math.max(foe.minX,Math.min(foe.maxX,foe.x));foe.state='recover';foe.timer=85;}
+      } else if (foe.state==='dive') {
+        foe.x+=foe.diveVX;foe.y+=foe.diveVY;
+        if (--foe.timer<=0) {foe.state='recover';foe.timer=90;}
+      } else {
+        foe.phase+=.045;
+        foe.x+=foe.direction*(foe.type===0?.75:foe.type===2?1.1:.25);
+        if(foe.x<=foe.minX||foe.x>=foe.maxX) {foe.x=Math.max(foe.minX,Math.min(foe.maxX,foe.x));foe.direction*=-1;}
+        if(foe.type===2)foe.y=foe.homeY+Math.sin(foe.phase)*22;
+        const dx=player.x+15-(foe.x+17),dy=player.y+21-(foe.y+20);
+        if(foe.cooldown===0 && !foe.shot.active && Math.abs(dx)<(foe.type===0?165:290) && Math.abs(dy)<(foe.type===2?230:70)) {
+          foe.state='warning';foe.timer=foe.type===0?42:55;foe.direction=dx<0?-1:1;
+          foe.targetX=player.x+15;foe.targetY=player.y+21;playSound(260,.12,'triangle',390);
+        }
+      }
+    }
+    if(overlaps(player,foe))hurtPlayer(foe.x+17);
+    if(foe.shot.active) {
+      const shot=foe.shot;shot.x+=shot.vx;shot.y+=shot.vy;shot.life--;
+      if(overlaps(player,shot)){shot.active=false;hurtPlayer(shot.x+8);}
+      else if(shot.life<=0||shot.x<0||shot.x>960||shot.y<0||shot.y>540)shot.active=false;
+    }
+  }
+  if(room===31 && wildTicks%240>=130 && wildTicks%240<185 && overlaps(player,wildTrap))hurtPlayer(wildTrap.x+30);
+}
+function updateIronSpear() {
+  if(spearCooldown>0)spearCooldown--;
+  if(spearQueued) {
+    if(!altar1Claimed){logMessage='先啟動祭壇 1，才能學會鐵之矛。';logTimer=120;}
+    else if(ironSpear.active||spearCooldown>0){logMessage='長矛正在收回，稍等一下。';logTimer=90;}
+    else if(steam<2){logMessage='鐵之矛需要 2 格蒸汽，揮劍命中敵人可補充。';logTimer=150;}
+    else {
+      steam-=2;spearCooldown=48;
+      Object.assign(ironSpear,{active:true,x:player.facing>0?player.x+player.w:player.x-48,y:player.y+16,vx:player.facing*14,phase:'out',ticks:0});ironSpear.hit.clear();
+      playSound(520,.14,'triangle',180);
+    }
+  }
+  spearQueued=false;
+  if(!ironSpear.active)return;
+  ironSpear.ticks++;
+  if(ironSpear.phase==='back'){
+    ironSpear.x+=(player.x+player.w/2-ironSpear.x-24)*.32;
+    ironSpear.y+=(player.y+18-ironSpear.y)*.32;
+    if(ironSpear.ticks>=15||Math.abs(ironSpear.x+24-player.x-15)<12)ironSpear.active=false;
+    return;
+  }
+  ironSpear.x+=ironSpear.vx;
+  if(room===2 && !weakWall.broken && overlaps(ironSpear,weakWall)){ironSpear.phase='back';ironSpear.ticks=0;return;}
+  const strike=(target,damage)=>{
+    if(target.health<=0||ironSpear.hit.has(target)||!overlaps(ironSpear,target))return;
+    ironSpear.hit.add(target);for(let i=0;i<3&&target.health>0;i++)damage();
+  };
+  if(room<2||room===4)strike(enemy,()=>damageEnemy(false));
+  if(room===1||room===2)strike(drone,()=>damageDrone(false));
+  if(inBossRoom()&&bossActive)strike(boss,()=>damageBoss(false));
+  if(duelistActive())strike(duelist,()=>damageDuelist(false));
+  if(combatFoesHere())for(const foe of branchEnemies)strike(foe,()=>damageBranchEnemy(false,foe));
+  if(roamingEnemiesHere())for(const foe of wildEnemies)strike(foe,()=>damageWildEnemy(foe,false));
+  const crate=crates[room];
+  if(crate.health>0&&!ironSpear.hit.has(crate)&&overlaps(ironSpear,crate)){
+    ironSpear.hit.add(crate);crate.health=Math.max(0,crate.health-3);crate.flash=10;
+    if(crate.health===0){crate.dropped=true;dropCoins(crate.x+17,crate.y+10,2);}
+  }
+  if(ironSpear.ticks>=23||ironSpear.x<-60||ironSpear.x>980){ironSpear.phase='back';ironSpear.ticks=0;}
+}
+function drawIronSpear() {
+  if(!ironSpear.active)return;
+  const headX=ironSpear.x+24,headY=ironSpear.y+7,handX=player.x+15,handY=player.y+22;
+  const distance=Math.hypot(headX-handX,headY-handY),links=Math.max(1,Math.floor(distance/13));
+  ctx.strokeStyle='#c6d3d2';ctx.lineWidth=1.5;
+  for(let i=0;i<links;i++){const t=(i+.5)/links,x=handX+(headX-handX)*t,y=handY+(headY-handY)*t;ctx.beginPath();ctx.ellipse(x,y,4.5,2.2,Math.atan2(headY-handY,headX-handX),0,Math.PI*2);ctx.stroke();}
+  ctx.save();ctx.translate(headX,headY);ctx.scale(ironSpear.vx>0?1:-1,1);
+  ctx.fillStyle='#8b9d9b';ctx.fillRect(-24,-3,39,6);ctx.fillStyle='#ecf6e9';ctx.beginPath();ctx.moveTo(12,-7);ctx.lineTo(28,0);ctx.lineTo(12,7);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#c5ecb3';ctx.lineWidth=2;ctx.beginPath();ctx.arc(-10,0,10,-1.3,1.3);ctx.stroke();ctx.restore();
+}
+function damageDuelist(grantsSteam) {
+  if(!duelistActive())return;
+  if(duelist.state==='guard' && grantsSteam){
+    duelist.state='counterTell';duelist.timer=22;duelist.direction=player.x<duelist.x?-1:1;duelist.combo=0;playSound(660,.12,'triangle',880);return;
+  }
+  duelist.health--;duelist.flash=10;shakeTimer=5;if(grantsSteam)steam=Math.min(3,steam+1);
+  if(duelist.state==='guard'){duelist.state='recover';duelist.timer=55;}
+  addSparks(duelist.x+18,duelist.y+25,'#ded6bd');playSound(240,.08,'triangle',140);
+  if(duelist.health>0 && duelist.health<=6 && duelist.phase===1){duelist.phase=2;logMessage='輻射裂痕正在擴散，她的劍變得更快了。';logTimer=180;}
+  if(duelist.health<=0){duelist.health=0;duelistDefeated=true;duelist.state='defeated';duelist.y=431;resetIronSpear();money=Math.min(999999,money+35);dockFallPending=!dockEntered;saveProgress();logMessage='她的細劍落下了。主角上前扶住了她。';logTimer=240;playSound(330,.4,'triangle',220);}
+}
+function beginDockFall(){
+  dockFallTick=0;keys.clear();player.vx=0;player.vy=0;healTimer=0;attackTimer=0;
+  jumpQueued=attackQueued=dashQueued=interactQueued=toolQueued=spearQueued=healQueued=false;
+  toolProjectile.active=false;resetIronSpear();mapOpen=journalOpen=helpOpen=equipmentOpen=shopOpen=travelOpen=false;
+  playSound(90,.8,'sawtooth',35);
+}
+function updateDockFall(){
+  dockFallTick++;
+  if(dockFallTick===60)playSound(160,.5,'sawtooth',35);
+  if(dockFallTick<180)return;
+  dockFallTick=-1;dockFallPending=false;dockEntered=true;dockArrivalStage=1;
+  dockCheckpoint.activated=true;activeCheckpoint='dock';
+  changeRoom(36);Object.assign(player,{x:380,y:443,vx:0,vy:0,grounded:true,facing:1});
+  health=Math.max(1,health);invulnerability=90;logMessage='兩人跌落地下熔塢。廢塢休息站已啟動。';logTimer=240;
+  saveProgress();
+}
+function updateDockRoom(){
+  if(room===38){
+    const lift=roomPlatforms[38].find(p=>p.dockLift);
+    const riding=player.grounded&&Math.abs(player.y+player.h-lift.y)<.01&&player.x+player.w>lift.x&&player.x<lift.x+lift.w;
+    const oldY=lift.y;lift.y+=lift.direction*1.2;
+    if(lift.y<=260||lift.y>=400){lift.y=Math.max(260,Math.min(400,lift.y));lift.direction*=-1;}
+    if(riding)player.y+=lift.y-oldY;
+  }
+  if(room===37&&wildTicks%210>=135&&wildTicks%210<180&&overlaps(player,dockJet))hurtPlayer(dockJet.x+22);
+}
+function dockLavaRescue(){
+  if(!isDockRoom()||player.y+player.h<500)return false;
+  // A single hazard hit returns to the bank; a fall cannot chain into instant death.
+  hurtPlayer(player.x+15);
+  Object.assign(player,{x:70,y:443,vx:0,vy:0,grounded:true});dashTimer=0;resetIronSpear();
+  return true;
+}
+function updateDuelist() {
+  if(!duelistActive())return;
+  const pace=duelist.phase===2?10:13;
+  if(duelist.musicTick%pace===0){const notes=[220,261.63,329.63,293.66,246.94,329.63,392,349.23,220,293.66,369.99,329.63,261.63,246.94,196,220];const step=Math.floor(duelist.musicTick/pace);playSound(notes[step%16],.13,'triangle',notes[step%16]);if(step%4===0)playSound(110,.22,'sine',110);}
+  duelist.musicTick++;if(duelist.flash>0)duelist.flash--;
+  if(duelist.state==='idle'){
+    duelist.direction=player.x+15<duelist.x+18?-1:1;
+    if(Math.abs(player.x-duelist.x)>140)duelist.x+=duelist.direction*(duelist.phase===2?1.8:1.1);
+    if(--duelist.timer<=0){duelist.move=['dash','leap','guard'][duelist.attackIndex%3];duelist.attackIndex++;duelist.state='warning';duelist.timer=duelist.phase===2?34:48;duelist.combo=0;}
+  }else if(duelist.state==='warning'){
+    if(--duelist.timer<=0){
+      if(duelist.move==='guard'){duelist.state='guard';duelist.timer=58;}
+      else if(duelist.move==='leap'){duelist.state='leap';duelist.vy=-10.8;}
+      else {duelist.state='thrust';duelist.timer=23;}
+    }
+  }else if(duelist.state==='guard'){
+    if(--duelist.timer<=0){duelist.state='recover';duelist.timer=55;}
+  }else if(duelist.state==='counterTell'){
+    if(--duelist.timer<=0){duelist.state='thrust';duelist.timer=23;}
+  }else if(duelist.state==='thrust'){
+    duelist.x+=duelist.direction*(duelist.phase===2?7.6:6.5);
+    if(--duelist.timer<=0||duelist.x<=95||duelist.x>=830){
+      if(duelist.phase===2 && duelist.combo===0){duelist.combo=1;duelist.state='counterTell';duelist.timer=23;duelist.direction=player.x<duelist.x?-1:1;}
+      else {duelist.state='recover';duelist.timer=duelist.phase===2?58:75;}
+    }
+  }else if(duelist.state==='leap'){
+    duelist.x+=duelist.direction*3;duelist.y+=duelist.vy;duelist.vy+=.48;
+    if(duelist.y>=431){duelist.y=431;duelist.state='recover';duelist.timer=70;}
+  }else if(duelist.state==='recover' && --duelist.timer<=0){duelist.state='idle';duelist.timer=45;}
+  duelist.x=Math.max(95,Math.min(830,duelist.x));
+  if(overlaps(player,duelist))hurtPlayer(duelist.x+18);
+  if(duelist.state==='thrust'){
+    const blade={x:duelist.direction>0?duelist.x+36:duelist.x-62,y:duelist.y+17,w:62,h:15};
+    if(overlaps(player,blade))hurtPlayer(duelist.x+18);
   }
 }
 function damageBoss(grantsSteam) {
@@ -880,21 +1235,25 @@ function hurtPlayer(sourceX) {
   health--; invulnerability = equipment.blue === 'fortress' ? 125 : equipment.blue === 'guard' ? 95 : 75; dashTimer = 0; playSound(180, 0.2, 'sawtooth', 75);
   variableJump = false; player.vy = -6; player.vx = player.x + player.w / 2 < sourceX ? -5 : 5;
   if (health <= 0) {
+    resetIronSpear();
     health = 0; deathTimer = DEATH_DURATION; healTimer = 0; healGlowTimer = 0;
     keys.clear(); jumpQueued = false; jumpBuffer = 0; attackQueued = false; attackTimer = 0;
-    dashQueued = false; dashTimer = 0; interactQueued = false; healQueued = false; toolQueued = false; toolProjectile.active = false;
+    dashQueued = false; dashTimer = 0; interactQueued = false; healQueued = false; toolQueued=false; spearQueued=false; toolProjectile.active = false;
     playSound(130, .4, 'sawtooth', 45);
   }
 }
 function update() {
-  if (farewellActive() || reunionActive() || (room === 11 && (familyStage === 6 || familyStage === 7)) || gameOver || won || mapOpen || journalOpen || helpOpen || equipmentOpen || shopOpen || travelOpen || townMenu || paused) return;
+  if (farewellActive() || reunionActive() || duelIntroActive() || (room === 11 && (familyStage === 6 || familyStage === 7)) || gameOver || won || mapOpen || journalOpen || helpOpen || equipmentOpen || shopOpen || travelOpen || townMenu || paused) return;
+  if(room===35&&dockFallPending&&dockFallTick<0)beginDockFall();
+  if(dockFallTick>=0){updateDockFall();return;}
+  if(dockArrivalActive())return;
   if (deathTimer > 0) { if (--deathTimer === 0) gameOver = true; return; }
   if (respawnTimer > 0) { respawnTimer--; return; }
-  if (healTimer > 0 && (health >= 3 || steam < 3)) healTimer = 0;
+  if (healTimer > 0 && (health >= playerMaxHealth() || steam < 3)) healTimer = 0;
   const tryingToMove = keys.has('ArrowLeft') || keys.has('ArrowRight') || keys.has('KeyA') || keys.has('KeyD');
-  const interruptsHealing = tryingToMove || jumpQueued || dashQueued || attackQueued || toolQueued || interactQueued;
+  const interruptsHealing = tryingToMove || spearQueued || jumpQueued || dashQueued || attackQueued || toolQueued || interactQueued;
   if (healTimer > 0 && interruptsHealing) { healTimer = 0; logMessage = '修復中斷，蒸汽未消耗。'; logTimer = 120; }
-  if (healQueued && healTimer === 0 && steam >= 3 && health < 3) {
+  if (healQueued && healTimer === 0 && steam >= 3 && health < playerMaxHealth()) {
     if (player.grounded && !interruptsHealing && dashTimer === 0) {
       healTimer = HEAL_DURATION; player.vx = 0; playSound(250, .25, 'sine', 350);
     } else { logMessage = '站穩後按 Q 修復。'; logTimer = 120; }
@@ -966,6 +1325,8 @@ function update() {
     if (riding) player.x = Math.max(0, Math.min(canvas.width - player.w, player.x + platform.x - oldX));
     mineSaw.x = 480 + Math.sin(ambientTime * .025) * 150;
   }
+  if(roamingEnemiesHere())updateWildRoom();
+  if(isDockRoom())updateDockRoom();
   if (room === 27 && bossActive) updateForestBoss();
   if (room === 3 && bossActive) {
     // A short synthesized loop follows the encounter and uses the shared sound toggle.
@@ -1190,6 +1551,7 @@ function update() {
     else if (branchShot.life <= 0 || branchShot.x < -12 || branchShot.x > canvas.width || branchShot.y < -12 || branchShot.y > canvas.height) branchShot.active = false;
   }
   if (deathTimer > 0 || gameOver) { attackQueued = false; interactQueued = false; healQueued = false; return; }
+  updateIronSpear();
   const toolCost = equipment.red === 'piercer' ? 2 : 1;
   if (toolQueued && toolAmmo >= toolCost && !toolProjectile.active) {
     const pulse = equipment.red === 'pulse', piercer = equipment.red === 'piercer';
@@ -1200,7 +1562,7 @@ function update() {
     toolProjectile.y = player.y + (player.h - toolProjectile.h) / 2;
     toolAmmo -= toolCost; saveProgress(); playSound(pulse ? 220 : 540, .16, 'triangle', pulse ? 130 : 340);
   } else if (toolQueued && toolAmmo < toolCost) { logMessage = '工具次數不足，回休息站補充。'; logTimer = 120; }
-  toolQueued = false;
+  toolQueued=false; spearQueued=false;
   if (toolProjectile.active) {
     toolProjectile.x += toolProjectile.vx; toolProjectile.life--;
     const pulse = toolProjectile.type === 'pulse', piercer = toolProjectile.type === 'piercer';
@@ -1211,7 +1573,11 @@ function update() {
       if ((room < 2 || room === 4) && enemy.health > 0 && overlaps(toolProjectile, enemy)) {
         damageEnemy(false); if (piercer && enemy.health > 0) damageEnemy(false); hit = true;
       }
-      if (combatFoesHere()) for (const foe of branchEnemies) {
+      if (roamingEnemiesHere()) for (const foe of wildEnemies) {
+        if ((!hit || pulse) && foe.health>0 && overlaps(toolProjectile,foe)) { damageWildEnemy(foe,false); if(piercer && foe.health>0) damageWildEnemy(foe,false); hit=true; }
+      }
+      if((!hit||pulse)&&duelistActive()&&overlaps(toolProjectile,duelist)) {damageDuelist(false);if(piercer&&duelist.health>0)damageDuelist(false);hit=true;}
+    if (combatFoesHere()) for (const foe of branchEnemies) {
         if ((!hit || pulse) && foe.health > 0 && overlaps(toolProjectile, foe)) {
           damageBranchEnemy(false, foe); if (piercer && foe.health > 0) damageBranchEnemy(false, foe); hit = true;
         }
@@ -1224,7 +1590,7 @@ function update() {
       }
       if ((!hit || pulse) && room === 0 && overlaps(toolProjectile, target)) { target.hits++; target.flash = 10; hit = true; }
       if (pulse) {
-        for (const shot of [room === 4 ? flowerShot : null, inBossRoom() ? bossShot : null, (room === 1 || room === 2) ? steamShot : null, ...(combatFoesHere() ? branchEnemies.map(foe => foe.shot) : [])]) {
+        for (const shot of [room === 4 ? flowerShot : null, inBossRoom() ? bossShot : null, (room === 1 || room === 2) ? steamShot : null, ...(combatFoesHere() ? branchEnemies.map(foe => foe.shot) : []), ...(roamingEnemiesHere()?wildEnemies.map(foe=>foe.shot):[])]) {
           if (shot && shot.active && overlaps(toolProjectile, shot)) {
             shot.active = false; hit = true; addSparks(shot.x + shot.w / 2, shot.y + shot.h / 2, '#b5f1dd');
           }
@@ -1315,10 +1681,15 @@ function update() {
       : {x: player.facing > 0 ? player.x + player.w : player.x - 48, y: player.y + 6, w: 48, h: 30};
     let hit = false;
     if ((room < 2 || room === 4) && enemy.health > 0 && overlaps(hitbox, enemy)) { hit = true; damageEnemy(true); }
+    if (roamingEnemiesHere()) for (const foe of wildEnemies) {
+      if (foe.health>0 && overlaps(hitbox,foe)) { hit=true; damageWildEnemy(foe,true); }
+      if (foe.shot.active && overlaps(hitbox,foe.shot)) { hit=true; foe.shot.active=false; addSparks(foe.shot.x,foe.shot.y,'#bce78f'); }
+    }
     if (combatFoesHere()) for (const foe of branchEnemies) {
       if (foe.health > 0 && overlaps(hitbox, foe)) { hit = true; damageBranchEnemy(true, foe); }
       if (foe.shot.active && overlaps(hitbox, foe.shot)) { hit = true; foe.shot.active = false; addSparks(foe.shot.x + 6, foe.shot.y + 6, '#b5f1dd'); }
     }
+    if(duelistActive()&&overlaps(hitbox,duelist)){damageDuelist(true);hit=true;}
     if (room === 0 && hitbox.x < target.x + target.w && hitbox.x + hitbox.w > target.x && hitbox.y < target.y + target.h && hitbox.y + hitbox.h > target.y) { hit = true; target.hits++; target.flash = 10; }
     if (inBossRoom() && bossActive && overlaps(hitbox, boss)) { hit = true; damageBoss(true); }
     if (room === 4 && flowerShot.active && overlaps(hitbox, flowerShot)) {
@@ -1341,7 +1712,9 @@ function update() {
       crate.health--; crate.flash = 10; hit = true; playSound(150, 0.1, 'square', 90);
       if (crate.health === 0) { crate.dropped = true; dropCoins(crate.x + crate.w / 2, crate.y + 10, 2); }
     }
-    if (attackDown && room === 1 && overlaps(hitbox, spring)) {
+    const pogoTarget = room===34 && attackDown ? wildPogoTargets.find(target=>player.y+player.h<=target.y+target.h && overlaps(hitbox,target)) : null;
+    if (pogoTarget) { player.vy=-12.8;player.grounded=false;variableJump=false;pogoTarget.flash=12;addSparks(pogoTarget.x+27,pogoTarget.y,'#c1edbd');playSound(330,.12,'triangle',650); }
+    else if (attackDown && room === 1 && overlaps(hitbox, spring)) {
       player.vy = -15.5; player.grounded = false; variableJump = false; spring.flash = 12;
       playSound(180, 0.2, 'triangle', 620);
     } else if (attackDown && hit) { player.vy = -9; player.grounded = false; variableJump = false; }
@@ -1379,6 +1752,7 @@ function update() {
       }
     }
   }
+  dockLavaRescue();
   if (isForestRoom() && forestHazards[room] && vent.cycle >= 120 && vent.cycle < 165 && overlaps(player, forestHazards[room])) hurtPlayer(forestHazards[room].x + forestHazards[room].w / 2);
   if (room === 7 && overlaps(player, mineSaw)) hurtPlayer(mineSaw.x + mineSaw.w / 2);
   if (room === 6 && vent.cycle >= 120 && vent.cycle < 165 && overlaps(player, branchVent)) hurtPlayer(branchVent.x + branchVent.w / 2);
@@ -1399,16 +1773,24 @@ function update() {
     saveProgress(); logMessage = reward ? '跑酷完成！獲得 25 枚齒輪幣。' : '跑酷完成！按 T 可再次挑戰。'; logTimer = 240;
     playSound(420, .35, 'triangle', 820);
   }
+  if (room===34 && !wildPogoFinished && overlaps(player,wildPogoGoal)) {
+    wildPogoFinished=true;
+    if(!wildPogoRewardClaimed) {wildPogoRewardClaimed=true;money=Math.min(999999,money+15);saveProgress();logMessage='下劈試煉完成！獲得 15 枚齒輪幣。';}
+    else logMessage='下劈試煉完成！按 T 可以再次挑戰。';
+    logTimer=220;playSound(500,.25,'triangle',800);
+  }
+  if(room===34 && !wildPogoFinished && wildPogoTargets.some(target=>overlaps(player,target))) {startPogoRun('碰到齒輪了；在落下前下劈，讓身體反彈。');return;}
+  if (room===32 && !wildCheckpoint.activated && overlaps(player,wildCheckpoint)) {wildCheckpoint.activated=true;activeCheckpoint='wild';if(health < playerMaxHealth())healingGlow();health = playerMaxHealth();saveProgress();logMessage='獵者營地休息站已啟動。';logTimer=180;}
   if (room === 18 && !forestBossKey && overlaps(player, forestKeyCard)) { forestBossKey = true; saveProgress(); logMessage = '取得果核王房卡！森林深處的大門可以開啟了。'; logTimer = 240; playSound(420, .25, 'triangle', 720); }
-  if (room === 19 && !forestCheckpoint.activated && overlaps(player, forestCheckpoint)) { forestCheckpoint.activated = true; activeCheckpoint = 'forest'; if (health < 3) healingGlow(); health = 3; logMessage = '果園休息站已啟動，生命已恢復。'; logTimer = 180; saveProgress(); playSound(390, .22, 'sine', 700); }
-  if (room === 10 && !townCheckpoint.activated && overlaps(player, townCheckpoint)) { townCheckpoint.activated = true; activeCheckpoint = 'town'; if (health < 3) healingGlow(); health = 3; logMessage = '鐘樓鎮休息站已啟動，生命已恢復。'; logTimer = 180; saveProgress(); playSound(390, .22, 'sine', 700); }
-  if (room === 4 && !greenhouseCheckpoint.activated && overlaps(player, greenhouseCheckpoint)) { greenhouseCheckpoint.activated = true; activeCheckpoint = 'greenhouse'; if (health < 3) healingGlow(); health = 3; toolAmmo = postFall ? 0 : 4; logMessage = postFall ? '溫室休息站已啟動，生命已恢復；工具仍然損壞。' : '溫室休息站已啟動，生命與工具已恢復。'; logTimer = 180; saveProgress(); playSound(390, 0.22, 'sine', 700); }
-  if (room === 2 && !elevatorCheckpoint.activated && overlaps(player, elevatorCheckpoint)) { elevatorCheckpoint.activated = true; activeCheckpoint = 'elevator'; if (health < 3) healingGlow(); health = 3; toolAmmo = postFall ? 0 : 4; logMessage = postFall ? '升降機井休息站已啟動，生命已恢復；工具仍然損壞。' : '升降機井休息站已啟動，生命與工具已恢復。'; logTimer = 180; saveProgress(); playSound(390, 0.22, 'sine', 700); }
-  if (room === 0 && !checkpoint.activated && overlaps(player, checkpoint)) { checkpoint.activated = true; activeCheckpoint = 'boiler'; if (health < 3) healingGlow(); health = 3; toolAmmo = postFall ? 0 : 4; logMessage = postFall ? '鍋爐室休息站已啟動，生命已恢復；工具仍然損壞。' : '鍋爐室休息站已啟動，生命與工具已恢復。'; logTimer = 180; saveProgress(); playSound(390, 0.22, 'sine', 700); }
-  if (crate.dropped && health < 3 && overlaps(player, crate)) { health++; crate.dropped = false; healingGlow(); playSound(500, 0.16, 'sine', 750); }
+  if (room === 19 && !forestCheckpoint.activated && overlaps(player, forestCheckpoint)) { forestCheckpoint.activated = true; activeCheckpoint = 'forest'; if (health < playerMaxHealth()) healingGlow(); health = playerMaxHealth(); logMessage = '果園休息站已啟動，生命已恢復。'; logTimer = 180; saveProgress(); playSound(390, .22, 'sine', 700); }
+  if (room === 10 && !townCheckpoint.activated && overlaps(player, townCheckpoint)) { townCheckpoint.activated = true; activeCheckpoint = 'town'; if (health < playerMaxHealth()) healingGlow(); health = playerMaxHealth(); logMessage = '鐘樓鎮休息站已啟動，生命已恢復。'; logTimer = 180; saveProgress(); playSound(390, .22, 'sine', 700); }
+  if (room === 4 && !greenhouseCheckpoint.activated && overlaps(player, greenhouseCheckpoint)) { greenhouseCheckpoint.activated = true; activeCheckpoint = 'greenhouse'; if (health < playerMaxHealth()) healingGlow(); health = playerMaxHealth(); toolAmmo = postFall ? 0 : 4; logMessage = postFall ? '溫室休息站已啟動，生命已恢復；工具仍然損壞。' : '溫室休息站已啟動，生命與工具已恢復。'; logTimer = 180; saveProgress(); playSound(390, 0.22, 'sine', 700); }
+  if (room === 2 && !elevatorCheckpoint.activated && overlaps(player, elevatorCheckpoint)) { elevatorCheckpoint.activated = true; activeCheckpoint = 'elevator'; if (health < playerMaxHealth()) healingGlow(); health = playerMaxHealth(); toolAmmo = postFall ? 0 : 4; logMessage = postFall ? '升降機井休息站已啟動，生命已恢復；工具仍然損壞。' : '升降機井休息站已啟動，生命與工具已恢復。'; logTimer = 180; saveProgress(); playSound(390, 0.22, 'sine', 700); }
+  if (room === 0 && !checkpoint.activated && overlaps(player, checkpoint)) { checkpoint.activated = true; activeCheckpoint = 'boiler'; if (health < playerMaxHealth()) healingGlow(); health = playerMaxHealth(); toolAmmo = postFall ? 0 : 4; logMessage = postFall ? '鍋爐室休息站已啟動，生命已恢復；工具仍然損壞。' : '鍋爐室休息站已啟動，生命與工具已恢復。'; logTimer = 180; saveProgress(); playSound(390, 0.22, 'sine', 700); }
+  if (crate.dropped && health < playerMaxHealth() && overlaps(player, crate)) { health++; crate.dropped = false; healingGlow(); playSound(500, 0.16, 'sine', 750); }
   if (room === 2 && steamCanister.available && steam < 3 && overlaps(player, steamCanister)) { steam++; steamCanister.available = false; logMessage = '取得蒸汽補給。'; logTimer = 120; playSound(300, .18, 'sine', 520); }
-  if (room === 1 && supply.available && health < 3 && overlaps(player, supply)) { health++; supply.available = false; healingGlow(); playSound(500, 0.16, 'sine', 750); }
-  if (repair.available && health < 3 && overlaps(player, repair)) { health++; repair.available = false; healingGlow(); playSound(500, 0.16, 'sine', 750); }
+  if (room === 1 && supply.available && health < playerMaxHealth() && overlaps(player, supply)) { health++; supply.available = false; healingGlow(); playSound(500, 0.16, 'sine', 750); }
+  if (repair.available && health < playerMaxHealth() && overlaps(player, repair)) { health++; repair.available = false; healingGlow(); playSound(500, 0.16, 'sine', 750); }
   if (room === 1 && !postFall && !doubleJumpUnlocked && overlaps(player, jumpUpgrade)) {
     doubleJumpUnlocked = true; saveProgress(); logMessage = '獲得蒸汽雙躍！空中可再按一次跳躍。'; logTimer = 240;
     playSound(360, 0.3, 'sine', 780);
@@ -1427,7 +1809,29 @@ function update() {
     changeRoom(7); interactQueued = false; return;
   }
   if (interactQueued) {
-    if (room === 12 && overlaps(player, seedGate)) {
+    if(room===36&&nearbyStation()?.id==='dock'){
+      if(health<playerMaxHealth())healingGlow();health=playerMaxHealth();activeCheckpoint='dock';saveProgress();logMessage='廢塢休息站：修復完畢，同伴正在燈旁休息。';logTimer=180;
+    }
+    else if(room===36&&Math.abs(player.x-505)<85){logMessage=dockShortcut?'主角：「找到回程升降梯了。別急，我扶你過去。」':'女同事：「我會在這裡等你……小心那些熔爐。」';logTimer=240;}
+    else if(room===39&&overlaps(player,{x:dockLever.x-25,y:dockLever.y,w:80,h:55})){
+      if(!dockShortcut){dockShortcut=true;saveProgress();playSound(220,.4,'triangle',440);}
+      logMessage='回程升降梯已通電！從右側搭乘，或回去找同伴。';logTimer=240;
+    }
+    else if(isDockRoom()&&overlaps(player,exitDoor)){
+      if(room===36){logMessage='上方已被坍塌的地板封死，得從熔塢尋找出路。';logTimer=180;}
+      else changeRoom(room-1);
+    }
+    else if(isDockRoom()&&overlaps(player,door)){
+      if(room<39)changeRoom(room+1);
+      else if(dockShortcut)changeRoom(35);
+      else {logMessage='先啟動旁邊的供電拉桿。';logTimer=180;}
+    }
+    else if(room===29 && overlaps(player,{x:wildAltar1.x-18,y:wildAltar1.y-5,w:wildAltar1.w+36,h:wildAltar1.h+5})) {
+      if(altar1Claimed) logMessage='祭壇 1 的祝福已獲得；按 V 使用鐵之矛。';
+      else {altar1Claimed=true;health=playerMaxHealth();steam=3;healingGlow();saveProgress();logMessage='祭壇 1：生命上限 +1，獲得鐵之矛！按 V 投出鐵鍊長矛。';playSound(330,.4,'triangle',660);}
+      logTimer=240;
+    }
+    else if (room === 12 && overlaps(player, seedGate)) {
       if (forestSeedPlanted && farewellStage > farewellLines.length) changeRoom(28);
       else { logMessage = '這條通路尚未長出來，先找到並種下生命種子。'; logTimer = 180; }
     }
@@ -1437,12 +1841,24 @@ function update() {
       else { forestSeedOwned = false; forestSeedPlanted = true; farewellStage = 1; townChildX = Math.max(60, player.x - 55); player.vx = 0; keys.clear(); logTimer = 0; saveProgress(); logMessage = '種子發芽了。'; playSound(420, .35, 'triangle', 750); }
       logTimer = 220;
     }
-    else if (room === 28 && overlaps(player, exitDoor)) changeRoom(12);
+    else if(room===32 && nearbyStation()?.id==='wild') {if(health < playerMaxHealth())healingGlow();health = playerMaxHealth();activeCheckpoint='wild';saveProgress();logMessage='營地休息完畢，重生點已更新。';logTimer=180;}
+    else if(room===35 && duelistDefeated && !dockEntered && Math.abs(player.x-duelist.x)<100) {logMessage='主角：「先別動。你的核心還能修好……我會想辦法。」';logTimer=220;}
+    else if(room===31 && overlaps(player,wildPogoGate)) changeRoom(34);
+    else if(isWildRoom() && overlaps(player,exitDoor)) {
+      if((room===33&&!wildGauntletCleared)||duelistActive()) {logMessage=room===35?'先讓她停下來，再離開這裡。':'三波車輪戰結束後才能離開。';logTimer=180;}
+      else changeRoom(room===35?33:room===34?31:room===28?12:room-1);
+    }
+    else if(isWildRoom() && overlaps(player,door)) {
+      if(room===33) {if(wildGauntletCleared)changeRoom(35);else {logMessage='擊退三波敵人，守住哨道！';logTimer=180;}}
+      else if(room===35) {if(dockShortcut)changeRoom(39);else {logMessage=dockEntered?'回程升降梯尚未通電，可從休息站傳送回廢塢。':'躲開她的突刺，再尋找反擊機會。';logTimer=180;}}
+      else if(room===34) {logMessage='完成試煉後從左側返回，或按 T 重試。';logTimer=180;}
+      else changeRoom(room+1);
+    }
     else if (room === 10 && overlaps(player, forestGate)) {
       if (familyStage >= 8) changeRoom(12);
       else { logMessage = '先和小孩回家，休息後再前往水果森林。'; logTimer = 180; }
     }
-    else if (room === 19 && forestCheckpoint.activated && nearbyStation()?.id === 'forest') { if (health < 3) healingGlow(); health = 3; activeCheckpoint = 'forest'; saveProgress(); logMessage = '果園休息站：生命已恢復。'; logTimer = 180; }
+    else if (room === 19 && forestCheckpoint.activated && nearbyStation()?.id === 'forest') { if (health < playerMaxHealth()) healingGlow(); health = playerMaxHealth(); activeCheckpoint = 'forest'; saveProgress(); logMessage = '果園休息站：生命已恢復。'; logTimer = 180; }
     else if (isForestRoom() && overlaps(player, exitDoor)) changeRoom(room === 12 ? 10 : room - 1);
     else if (isForestRoom() && overlaps(player, door)) {
       if (room < 21) changeRoom(room + 1);
@@ -1453,7 +1869,7 @@ function update() {
       if (bossActive) { logMessage = '擊敗果核機械王後才能離開！'; logTimer = 150; }
       else changeRoom(21);
     }
-    else if (room === 10 && townCheckpoint.activated && nearbyStation()?.id === 'town') { if (health < 3) healingGlow(); health = 3; activeCheckpoint = 'town'; saveProgress(); logMessage = '鐘樓鎮休息站：生命已恢復，重生點已更新。'; logTimer = 180; playSound(390, .22, 'sine', 700); }
+    else if (room === 10 && townCheckpoint.activated && nearbyStation()?.id === 'town') { if (health < playerMaxHealth()) healingGlow(); health = playerMaxHealth(); activeCheckpoint = 'town'; saveProgress(); logMessage = '鐘樓鎮休息站：生命已恢復，重生點已更新。'; logTimer = 180; playSound(390, .22, 'sine', 700); }
     else if (room === 10 && player.x + player.w > 875 && player.y + player.h > 405) changeRoom(11);
     else if (room === 11 && overlaps(player, exitDoor)) changeRoom(10);
     else if (room === 11 && familyStage === 8 && Math.abs(player.x + player.w / 2 - 475) < 175 && player.y + player.h > 420) {
@@ -1469,7 +1885,7 @@ function update() {
       ];
       logMessage = lines[Math.max(0, familyStage - 1)]; logTimer = 240;
       familyStage = Math.min(6, familyStage + 1);
-      if (familyStage === 6) { keys.clear(); player.vx = 0; player.vy = 0; attackTimer = 0; attackQueued = false; dashQueued = false; toolQueued = false; }
+      if (familyStage === 6) { keys.clear(); player.vx = 0; player.vy = 0; attackTimer = 0; attackQueued = false; dashQueued = false; toolQueued=false; spearQueued=false; }
       saveProgress();
     }
     else if (room === 10 && townShops.some(townShopNear)) openTownShop(townShops.find(townShopNear));
@@ -1511,17 +1927,17 @@ function update() {
       if (!controlSwitch.active) { controlSwitch.active = true; playSound(280, 0.2, 'triangle', 560); }
       logMessage = '蒸汽開關已啟動。'; logTimer = 150;
     }
-    else if (room === 0 && overlaps(player, {x: merchant.x - 15, y: merchant.y, w: merchant.w + 30, h: merchant.h})) { shopOpen = true; shopNotice = ''; keys.clear(); jumpQueued = false; attackQueued = false; dashQueued = false; toolQueued = false; }
+    else if (room === 0 && overlaps(player, {x: merchant.x - 15, y: merchant.y, w: merchant.w + 30, h: merchant.h})) { shopOpen = true; shopNotice = ''; keys.clear(); jumpQueued = false; attackQueued = false; dashQueued = false; toolQueued=false; spearQueued=false; }
     else if (room === 0 && coreCollected && overlaps(player, door)) changeRoom(1);
     else if (room === 1 && overlaps(player, exitDoor)) changeRoom(0);
     else if (room === 4 && greenhouseCheckpoint.activated && overlaps(player, {x: greenhouseCheckpoint.x - 20, y: greenhouseCheckpoint.y, w: greenhouseCheckpoint.w + 40, h: greenhouseCheckpoint.h})) {
-      if (health < 3) healingGlow(); health = 3; toolAmmo = postFall ? 0 : 4; activeCheckpoint = 'greenhouse'; saveProgress(); logMessage = postFall ? '溫室休息站：生命已恢復，工具仍然損壞。' : '溫室休息站：生命與工具已恢復，重生點已更新。'; logTimer = 180; playSound(390, 0.22, 'sine', 700);
+      if (health < playerMaxHealth()) healingGlow(); health = playerMaxHealth(); toolAmmo = postFall ? 0 : 4; activeCheckpoint = 'greenhouse'; saveProgress(); logMessage = postFall ? '溫室休息站：生命已恢復，工具仍然損壞。' : '溫室休息站：生命與工具已恢復，重生點已更新。'; logTimer = 180; playSound(390, 0.22, 'sine', 700);
     }
     else if (room === 2 && elevatorCheckpoint.activated && overlaps(player, {x: elevatorCheckpoint.x - 20, y: elevatorCheckpoint.y, w: elevatorCheckpoint.w + 40, h: elevatorCheckpoint.h})) {
-      if (health < 3) healingGlow(); health = 3; toolAmmo = postFall ? 0 : 4; activeCheckpoint = 'elevator'; saveProgress(); logMessage = postFall ? '升降機井休息站：生命已恢復，工具仍然損壞。' : '升降機井休息站：生命與工具已恢復，重生點已更新。'; logTimer = 180; playSound(390, 0.22, 'sine', 700);
+      if (health < playerMaxHealth()) healingGlow(); health = playerMaxHealth(); toolAmmo = postFall ? 0 : 4; activeCheckpoint = 'elevator'; saveProgress(); logMessage = postFall ? '升降機井休息站：生命已恢復，工具仍然損壞。' : '升降機井休息站：生命與工具已恢復，重生點已更新。'; logTimer = 180; playSound(390, 0.22, 'sine', 700);
     }
     else if (room === 0 && checkpoint.activated && overlaps(player, {x: checkpoint.x - 20, y: checkpoint.y, w: checkpoint.w + 40, h: checkpoint.h})) {
-      if (health < 3) healingGlow(); health = 3; toolAmmo = postFall ? 0 : 4; activeCheckpoint = 'boiler'; saveProgress(); logMessage = postFall ? '鍋爐室休息站：生命已恢復，工具仍然損壞。' : '鍋爐室休息站：生命與工具已恢復，重生點已更新。'; logTimer = 180;
+      if (health < playerMaxHealth()) healingGlow(); health = playerMaxHealth(); toolAmmo = postFall ? 0 : 4; activeCheckpoint = 'boiler'; saveProgress(); logMessage = postFall ? '鍋爐室休息站：生命已恢復，工具仍然損壞。' : '鍋爐室休息站：生命與工具已恢復，重生點已更新。'; logTimer = 180;
       playSound(390, 0.22, 'sine', 700);
     }
     else {
@@ -1532,7 +1948,8 @@ function update() {
   }
   interactQueued = false;
   if (player.y > canvas.height + 100) {
-    if (room === 5) startCourse('掉落了，回到起點再試一次。');
+    if(room===34) startPogoRun('掉落了，回到起點重試；下劈時按住 S。');
+    else if (room === 5) startCourse('掉落了，回到起點再試一次。');
     else { player.x = 90; player.y = 420; player.vx = 0; player.vy = 0; }
   }
 }
@@ -1598,6 +2015,233 @@ function drawRepairWrench() {
   if (Math.floor((HEAL_DURATION - healTimer) / 6) % 2 === 0) { ctx.fillRect(4, -4, 3, 3); ctx.fillRect(1, -8, 2, 2); }
   ctx.restore();
 }
+function drawDockBackdrop(){
+  const bg=ctx.createLinearGradient(0,0,0,540);bg.addColorStop(0,'#151b23');bg.addColorStop(.6,'#34272b');bg.addColorStop(1,'#8c422d');ctx.fillStyle=bg;ctx.fillRect(0,0,960,540);
+  // Layered gantries, riveted pipes and distant furnace mouths.
+  for(let i=0;i<7;i++){
+    const x=i*155-30;ctx.fillStyle='#20232a';ctx.fillRect(x,90+(i%2)*40,80,395);
+    ctx.strokeStyle='#454046';ctx.lineWidth=7;ctx.strokeRect(x+9,115,62,370);
+    ctx.beginPath();ctx.moveTo(x+10,210);ctx.lineTo(x+70,280);ctx.moveTo(x+70,280);ctx.lineTo(x+10,350);ctx.stroke();
+    ctx.fillStyle='#ad5d35';ctx.fillRect(x+28,350,30,100);ctx.fillStyle='#e7974e';ctx.fillRect(x+35,375,7,60);
+  }
+  ctx.fillStyle='#191c22';ctx.fillRect(0,145,960,19);ctx.fillRect(0,280,960,10);
+  for(let i=0;i<5;i++){
+    const x=95+i*195;ctx.strokeStyle='#807366';ctx.lineWidth=2;
+    for(let y=0;y<210+(i%2)*90;y+=13){ctx.beginPath();ctx.ellipse(x,y,4,7,0,0,Math.PI*2);ctx.stroke();}
+    ctx.strokeStyle='#514743';ctx.lineWidth=8;ctx.beginPath();ctx.arc(x,232+(i%2)*90,27,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle='#96714f';ctx.lineWidth=3;for(let a=0;a<4;a++){const angle=ambientTime*.008+a*Math.PI/2;ctx.beginPath();ctx.moveTo(x,232+(i%2)*90);ctx.lineTo(x+Math.cos(angle)*25,232+(i%2)*90+Math.sin(angle)*25);ctx.stroke();}
+  }
+  if(room===37||room===38){
+    ctx.fillStyle='#b94925';ctx.fillRect(0,500,960,40);ctx.fillStyle='#f6a34d';
+    for(let x=0;x<960;x+=12)ctx.fillRect(x,499+Math.sin(x*.03+ambientTime*.06)*3,12,5);
+    ctx.fillStyle='rgba(236,105,42,.13)';ctx.fillRect(0,445,960,55);
+  }
+  for(let i=0;i<22;i++){const x=(i*83+ambientTime*.18)%960,y=490-(i*59+ambientTime*.35)%370;ctx.fillStyle=i%3?'#bb7844':'#ffcb72';ctx.fillRect(x,y,2,3);}
+}
+function drawDockCompanion(x,y,falling=false){
+  ctx.save();ctx.translate(x,y);ctx.fillStyle='#d6c8b5';ctx.beginPath();ctx.moveTo(-12,13);ctx.lineTo(-22,40);ctx.lineTo(-10,36);ctx.lineTo(3,44);ctx.lineTo(15,35);ctx.lineTo(10,13);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#96556c';ctx.fillRect(-14,13,28,5);ctx.fillRect(-21,25,9,5);ctx.fillStyle='#70837d';ctx.fillRect(-9,18,18,19);
+  ctx.fillStyle='#bac3b5';ctx.fillRect(-9,0,18,14);ctx.fillStyle='#283837';ctx.fillRect(0,5,8,6);ctx.fillStyle='#c5ea8e';ctx.fillRect(2,7,4,3);
+  ctx.strokeStyle='#bc986b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(-10,4,5,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#3d4547';ctx.fillRect(-9,37,7,falling?14:6);ctx.fillRect(3,37,7,falling?14:6);ctx.restore();
+}
+function drawDockActors(){
+  if(room===36){
+    ctx.fillStyle='#80654c';ctx.fillRect(465,479,95,6);drawDockCompanion(505,438);
+    ctx.fillStyle='#f7bf68';ctx.fillRect(561,360,5,125);ctx.fillStyle='#dd9a4c';ctx.fillRect(552,358,23,30);
+    ctx.fillStyle='rgba(255,192,106,.08)';ctx.beginPath();ctx.arc(564,373,88,0,Math.PI*2);ctx.fill();
+    ctx.textAlign='center';ctx.fillStyle='#ecd1b3';ctx.font='13px sans-serif';ctx.fillText('E 與女同事交談',505,422);
+    ctx.fillStyle='#4d5150';ctx.fillRect(dockCheckpoint.x,443,32,42);ctx.fillStyle='#b4e3c3';ctx.fillRect(dockCheckpoint.x+7,451,18,20);
+    ctx.fillStyle='#ded4b5';ctx.fillText('E 休息 · G 傳送',dockCheckpoint.x+16,425);
+    ctx.fillStyle='#66594f';for(let i=0;i<7;i++)ctx.fillRect(20+i*10,420+(i%3)*15,15,65);
+    ctx.textAlign='left';ctx.fillStyle='#cbb79b';ctx.fillText('坍塌封路',12,395);
+  }
+  if(room===37){
+    const cycle=wildTicks%210;ctx.fillStyle='#543e36';ctx.fillRect(dockJet.x-5,477,55,8);
+    if(cycle>=100&&cycle<135){ctx.strokeStyle='#f3be66';ctx.setLineDash([4,5]);ctx.strokeRect(dockJet.x,dockJet.y,dockJet.w,dockJet.h);ctx.setLineDash([]);ctx.textAlign='center';ctx.fillStyle='#ffd37d';ctx.font='14px sans-serif';ctx.fillText('爐口即將噴發',582,380);}
+    if(cycle>=135&&cycle<180){ctx.fillStyle='rgba(255,130,51,.65)';ctx.fillRect(dockJet.x,dockJet.y,dockJet.w,dockJet.h);ctx.fillStyle='#ffe08a';ctx.fillRect(dockJet.x+14,dockJet.y+13,15,77);}
+  }
+  for(const platform of roomPlatforms[room])if(platform.dockLift){ctx.strokeStyle='#a99070';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(platform.x+12,0);ctx.lineTo(platform.x+12,platform.y);ctx.moveTo(platform.x+platform.w-12,0);ctx.lineTo(platform.x+platform.w-12,platform.y);ctx.stroke();ctx.fillStyle='#e5ce9c';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('吊鏈升降台',platform.x+platform.w/2,platform.y+32);}
+  if(room===39){ctx.fillStyle='#5b665a';ctx.fillRect(830,452,40,33);ctx.strokeStyle=dockShortcut?'#c4e5a0':'#d7a26d';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(850,461);ctx.lineTo(dockShortcut?866:835,430);ctx.stroke();ctx.textAlign='center';ctx.fillStyle='#ebce9f';ctx.font='13px sans-serif';ctx.fillText(dockShortcut?'回程梯已通電':'E 啟動供電拉桿',840,415);}
+  if(room>36){ctx.strokeStyle='#ad8a67';ctx.lineWidth=2;ctx.strokeRect(5,405,48,80);ctx.textAlign='left';ctx.fillStyle='#e8cfaa';ctx.font='13px sans-serif';ctx.fillText('E 返回',5,395);}
+  ctx.strokeStyle='#b99b78';ctx.lineWidth=2;ctx.strokeRect(907,405,46,80);ctx.textAlign='right';ctx.fillStyle='#ead4ae';ctx.font='13px sans-serif';ctx.fillText(room===39?'E 回程升降梯':'E 前往下一區',952,395);
+}
+function drawDockArrival(){
+  ctx.fillStyle='rgba(19,22,27,.96)';ctx.fillRect(85,335,790,175);ctx.strokeStyle='#c09367';ctx.lineWidth=2;ctx.strokeRect(85,335,790,175);
+  ctx.textAlign='center';ctx.fillStyle='#efc58d';ctx.font='bold 22px sans-serif';ctx.fillText('區域 4 · 地下熔塢',480,375);
+  ctx.fillStyle='#e7ded0';ctx.font='18px sans-serif';ctx.fillText(dockArrivalLines[dockArrivalStage-1],480,428);ctx.font='14px sans-serif';ctx.fillText('按 E 繼續',480,483);
+}
+function drawDockMap(){
+  ctx.fillStyle='rgba(17,20,26,.97)';ctx.fillRect(0,0,960,540);ctx.textAlign='center';ctx.fillStyle='#e9c79b';ctx.font='bold 26px sans-serif';ctx.fillText('區域 4 · 地下熔塢',480,76);
+  const points=[{x:70,y:160},{x:310,y:160},{x:550,y:275},{x:310,y:370}];
+  ctx.strokeStyle='#ad8461';ctx.lineWidth=3;
+  for(let i=0;i<3;i++)if(visitedRooms[36+i]&&visitedRooms[37+i]){ctx.beginPath();ctx.moveTo(points[i].x+90,points[i].y+35);ctx.lineTo(points[i+1].x+90,points[i+1].y+35);ctx.stroke();}
+  points.forEach((point,i)=>{if(!visitedRooms[36+i])return;ctx.fillStyle=room===36+i?'#75503c':'#33343b';ctx.fillRect(point.x,point.y,180,70);ctx.strokeStyle='#c69a6a';ctx.strokeRect(point.x,point.y,180,70);ctx.fillStyle='#efdab9';ctx.font='16px sans-serif';ctx.fillText(dockZones[i].name,point.x+90,point.y+28);ctx.font='12px sans-serif';ctx.fillText(i===0?'同伴 · 休息傳送站':i===3?(dockShortcut?'回程捷徑已開啟':'回程升降梯供電'):'已探索',point.x+90,point.y+52);});
+  ctx.fillStyle='#c8b79d';ctx.font='14px sans-serif';ctx.fillText('坍塌處無法攀回；舊泵房的升降梯通往故人決鬥場。',480,487);ctx.fillText('Tab 關閉',480,517);
+}
+function drawDockFall(){
+  const t=dockFallTick;ctx.textAlign='center';
+  if(t<60){
+    ctx.strokeStyle='#17171c';ctx.lineWidth=4;
+    for(let i=0;i<7;i++){const x=140+i*110;ctx.beginPath();ctx.moveTo(x,485);ctx.lineTo(x+24,496);ctx.lineTo(x+6,508);ctx.lineTo(x+35,532);ctx.stroke();}
+    ctx.fillStyle='rgba(17,18,22,.85)';ctx.fillRect(180,315,600,80);ctx.fillStyle='#f1d5ad';ctx.font='21px sans-serif';ctx.fillText(t<30?'女同事：「等等……地板在震動！」':'主角：「抓緊我！」',480,363);return;
+  }
+  const fall=t-60;ctx.fillStyle='#10151d';ctx.fillRect(0,0,960,540);
+  ctx.fillStyle='#352d30';ctx.fillRect(0,0,155,540);ctx.fillRect(805,0,155,540);
+  ctx.strokeStyle='#65554a';ctx.lineWidth=12;for(let i=0;i<5;i++){const y=(i*160-fall*8)%800;ctx.strokeRect(20,y,100,100);ctx.strokeRect(840,y+40,100,100);}
+  for(let i=0;i<17;i++){const x=165+(i*83)%625,y=((i*57-fall*5)%620+620)%620-40;ctx.fillStyle=i%2?'#79624b':'#534637';ctx.save();ctx.translate(x,y);ctx.rotate(fall*.03+i);ctx.fillRect(-8,-6,16+(i%3)*8,12);ctx.restore();}
+  const y=180+Math.min(fall,75)*1.1;
+  ctx.save();ctx.translate(425,y);ctx.rotate(-.12);ctx.fillStyle='#626b63';ctx.fillRect(-12,7,27,30);ctx.fillStyle='#49483e';ctx.beginPath();ctx.moveTo(-14,12);ctx.lineTo(-27,42);ctx.lineTo(5,35);ctx.closePath();ctx.fill();ctx.fillStyle='#758c81';ctx.fillRect(-10,-5,23,17);ctx.fillStyle='#c9b27a';ctx.beginPath();ctx.moveTo(-25,-4);ctx.lineTo(0,-20);ctx.lineTo(26,-4);ctx.closePath();ctx.fill();ctx.fillStyle='#b9e4b0';ctx.fillRect(4,1,7,4);ctx.fillStyle='#4b5250';ctx.fillRect(-9,35,8,17);ctx.fillRect(8,35,8,17);ctx.strokeStyle='#8d9e91';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(12,19);ctx.lineTo(58,23);ctx.stroke();ctx.restore();
+  drawDockCompanion(495,y+8,true);ctx.fillStyle='#edc391';ctx.font='22px sans-serif';ctx.fillText('兩人墜入熔爐深處……',480,450);
+  if(t>155){ctx.fillStyle='rgba(0,0,0,'+Math.min(1,(t-155)/24)+')';ctx.fillRect(0,0,960,540);}
+}
+function drawWildBackdrop() {
+  const kind=room===35?'duel':room===34?'gorge':wildZones[room-28].kind, trail=kind==='trail'||kind==='camp'||kind==='duel';
+  const sky=ctx.createLinearGradient(0,0,0,540);
+  sky.addColorStop(0,trail?'#1d3836':'#6a8976');sky.addColorStop(.62,trail?'#5d7560':'#c5c994');sky.addColorStop(1,'#494f39');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,960,540);
+  ctx.fillStyle=trail?'#6c8670':'#e1d3a0';ctx.globalAlpha=.5;ctx.beginPath();ctx.arc(725,155,45,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  for(let layer=0;layer<3;layer++){
+    ctx.fillStyle=['#627e67','#506f5c','#405d4e'][layer];ctx.globalAlpha=.45+layer*.13;
+    ctx.beginPath();ctx.moveTo(0,540);
+    for(let x=0;x<=1000;x+=80)ctx.lineTo(x,280+layer*62+Math.sin(x*.009+layer+(room-28)*.6)*(28-layer*5));
+    ctx.lineTo(1000,540);ctx.closePath();ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  if(trail) for(let i=0;i<7;i++){
+    const x=30+i*155+(room%2)*25;ctx.fillStyle='#293f36';
+    ctx.beginPath();ctx.moveTo(x,485);ctx.lineTo(x+26,70+i%3*30);ctx.lineTo(x+45,100);ctx.lineTo(x+60,485);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#4b6250';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(x+32,185);ctx.lineTo(x-30,130);ctx.moveTo(x+35,230);ctx.lineTo(x+105,160);ctx.stroke();
+  }
+  // Wind-bent reed silhouettes replace the pipes beyond the town.
+  ctx.strokeStyle=trail?'#6c805a':'#8c9562';ctx.lineWidth=3;
+  for(let i=0;i<20;i++){
+    const x=i*53+(room%3)*9, sway=Math.sin(ambientTime*.024+i)*9;
+    ctx.beginPath();ctx.moveTo(x,485);ctx.lineTo(x+8+sway,365-i%4*22);ctx.stroke();
+    ctx.fillStyle='#b6b67c';ctx.beginPath();ctx.ellipse(x+9+sway,355-i%4*22,3,14,.3,0,Math.PI*2);ctx.fill();
+  }
+  for(let i=0;i<14;i++){
+    const x=(i*79+ambientTime*(.35+i%3*.12))%1000-20,y=170+(i*47)%260;
+    ctx.fillStyle=i%3===0?'rgba(184,238,108,.55)':'rgba(231,224,166,.35)';ctx.fillRect(x,y,3,2);
+  }
+  if(kind==='gorge'){
+    ctx.fillStyle='#263b36';ctx.fillRect(350,485,220,55);
+    ctx.strokeStyle='#bdad7b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(305,485);ctx.lineTo(305,445);ctx.moveTo(600,485);ctx.lineTo(600,445);ctx.stroke();
+  }
+  if(kind==='camp'){
+    ctx.fillStyle='#484936';ctx.beginPath();ctx.moveTo(330,465);ctx.lineTo(470,260);ctx.lineTo(620,465);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#bbad76';ctx.lineWidth=4;ctx.stroke();ctx.fillStyle='#1f332d';ctx.fillRect(450,367,55,98);
+    ctx.fillStyle='#d9a05e';ctx.beginPath();ctx.arc(585,456,11+Math.sin(ambientTime*.12)*2,0,Math.PI*2);ctx.fill();
+  }
+  if(trail){ctx.fillStyle='rgba(176,198,165,.09)';for(let i=0;i<4;i++)ctx.fillRect(-30+Math.sin(ambientTime*.006+i)*35,230+i*48,1050,24);}
+  if(room===28){ctx.textAlign='center';ctx.fillStyle='#e6e3b9';ctx.font='16px sans-serif';ctx.fillText('樹根之路 · 新旅程的入口',480,160);}
+}
+function drawWildActors() {
+  if(isWildRoom())for(const platform of roomPlatforms[room]){
+    ctx.strokeStyle=room<=30?'#acb77b':'#8ea078';ctx.lineWidth=1.5;
+    for(let x=platform.x+5;x<platform.x+platform.w-3;x+=11){
+      const h=5+(Math.floor(x)%13),sway=Math.sin(ambientTime*.035+x*.04)*4;
+      ctx.beginPath();ctx.moveTo(x,platform.y);ctx.lineTo(x+sway,platform.y-h);ctx.stroke();
+    }
+  }
+  for(const foe of wildEnemies){
+    const shot=foe.shot;
+    if(shot.active){ctx.fillStyle='#c5f48b';ctx.fillRect(shot.x,shot.y,shot.w,shot.h);ctx.strokeStyle='#7fa962';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(shot.x+8-shot.vx*3,shot.y+4);ctx.lineTo(shot.x+8,shot.y+4);ctx.stroke();}
+    if(foe.health<=0)continue;
+    const spec=(isDockRoom()?dockEnemyTypes:wildEnemyTypes)[foe.type];ctx.fillStyle='rgba(170,237,104,.15)';ctx.beginPath();ctx.arc(foe.x+17,foe.y+20,27,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=foe.flash?'#f4f5b6':spec.color;
+    ctx.beginPath();ctx.moveTo(foe.x+5,foe.y+31);ctx.lineTo(foe.x+8,foe.y+9);ctx.lineTo(foe.x+17,foe.y);ctx.lineTo(foe.x+27,foe.y+10);ctx.lineTo(foe.x+31,foe.y+31);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#293f36';ctx.fillRect(foe.x+8,foe.y+13,18,9);ctx.fillRect(foe.x+6,foe.y+31,7,9);ctx.fillRect(foe.x+23,foe.y+31,7,9);
+    ctx.fillStyle='#ceff89';ctx.fillRect(foe.x+(foe.direction>0?20:10),foe.y+15,5,4);
+    ctx.strokeStyle='#b3ef79';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(foe.x+18,foe.y+22);ctx.lineTo(foe.x+14,foe.y+27);ctx.lineTo(foe.x+21,foe.y+30);ctx.stroke();
+    if(!isDockRoom()&&foe.type===0){ctx.strokeStyle='#d8d9af';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(foe.x+17+foe.direction*13,foe.y+25);ctx.lineTo(foe.x+17+foe.direction*34,foe.y+7);ctx.stroke();}
+    if(!isDockRoom()&&foe.type===1){ctx.strokeStyle='#b7c89a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(foe.x+17+foe.direction*21,foe.y+22,14,-1.4,1.4);ctx.stroke();}
+    if(!isDockRoom()&&foe.type===2){ctx.fillStyle='rgba(202,221,173,.6)';ctx.beginPath();ctx.ellipse(foe.x-2,foe.y+5,17,5,Math.sin(ambientTime*.4)*.5,0,Math.PI*2);ctx.ellipse(foe.x+36,foe.y+5,17,5,-Math.sin(ambientTime*.4)*.5,0,Math.PI*2);ctx.fill();}
+    if(isDockRoom()){
+      if(foe.type===0){
+        ctx.fillStyle='#684737';ctx.fillRect(foe.x+2,foe.y+9,31,23);ctx.strokeStyle='#ad9474';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(foe.x+17,foe.y+25);ctx.lineTo(foe.x+17+foe.direction*27,foe.y+(foe.state==='warning'?-13:30));ctx.stroke();ctx.fillStyle='#df9d58';ctx.fillRect(foe.x+5+foe.direction*27,foe.y+(foe.state==='warning'?-23:20),25,20);
+      }else if(foe.type===1){
+        ctx.fillStyle='#4a4b47';ctx.fillRect(foe.x+2,foe.y+6,30,25);ctx.fillStyle='#d98c48';ctx.fillRect(foe.x+7,foe.y+11,20,14);ctx.fillStyle='#71776c';ctx.fillRect(foe.x+9,foe.y-9,16,19);
+      }else{
+        ctx.fillStyle='#535f60';ctx.fillRect(foe.x-5,foe.y+4,44,27);ctx.strokeStyle='#b6a281';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(foe.x+17,foe.y+4);ctx.lineTo(foe.x+17,foe.y-20);ctx.stroke();ctx.fillStyle='#eab16a';ctx.fillRect(foe.x+8,foe.y+28,18,8);
+      }
+      if(shot.active){ctx.fillStyle=shot.kind==='beam'?'rgba(255,185,91,.75)':'#f2a34d';ctx.fillRect(shot.x,shot.y,shot.w,shot.h);ctx.fillStyle='#ffe3a3';if(shot.kind==='beam')ctx.fillRect(shot.x+9,shot.y,6,shot.h);}
+      if(foe.state==='warning'){
+        ctx.strokeStyle='#f8b86a';ctx.fillStyle='#f6cc86';ctx.textAlign='center';ctx.font='12px sans-serif';
+        if(foe.type===0){ctx.strokeRect(foe.direction>0?foe.x+34:foe.x-120,469,120,16);ctx.fillText('熔錘震地',foe.x+17,foe.y-35);}
+        else if(foe.type===1){ctx.beginPath();ctx.ellipse(foe.targetX,480,38,7,0,0,Math.PI*2);ctx.stroke();ctx.fillText('熔渣拋射',foe.x+17,foe.y-35);}
+        else {ctx.setLineDash([4,5]);ctx.beginPath();ctx.moveTo(foe.x+17,foe.y+34);ctx.lineTo(foe.x+17,485);ctx.stroke();ctx.setLineDash([]);ctx.fillText('熱束鎖定',foe.x+17,foe.y-35);}
+      }
+    }
+    ctx.fillStyle='#334235';ctx.fillRect(foe.x,foe.y-9,34,3);ctx.fillStyle='#c5db87';ctx.fillRect(foe.x,foe.y-9,34*foe.health/foe.maxHealth,3);
+    if(foe.state!=='warning' && Math.abs(player.x-foe.x)<180){ctx.textAlign='center';ctx.fillStyle='#cfe69b';ctx.font='11px sans-serif';ctx.fillText(spec.name,foe.x+17,foe.y-17);}
+    if(foe.state==='warning'){
+      ctx.textAlign='center';ctx.fillStyle='#f1d692';ctx.font='bold 18px sans-serif';ctx.fillText('！',foe.x+17,foe.y-17);
+      if(!isDockRoom()&&foe.type===1){ctx.strokeStyle='rgba(198,240,135,.45)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(foe.x+17,foe.y+20);ctx.lineTo(foe.targetX,foe.targetY);ctx.stroke();}
+      if(!isDockRoom()&&foe.type===2){ctx.strokeStyle='#a7cc80';ctx.strokeRect(foe.targetX-20,foe.targetY-12,40,32);}
+    }
+  }
+  if(room===29){
+    ctx.fillStyle='#485946';ctx.fillRect(wildAltar1.x-9,wildAltar1.y+43,58,11);ctx.fillStyle='#7c8d70';ctx.fillRect(wildAltar1.x+5,wildAltar1.y+12,30,35);
+    ctx.strokeStyle=altar1Claimed?'#c1e2a2':'#c1ae7c';ctx.lineWidth=3;ctx.beginPath();ctx.arc(wildAltar1.x+20,wildAltar1.y+13,17,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle=altar1Claimed?'#d9f6ae':'#cfbb7e';ctx.fillRect(wildAltar1.x+17,wildAltar1.y-7,6,37);
+    ctx.textAlign='center';ctx.fillStyle='#e9e3b7';ctx.font='13px sans-serif';ctx.fillText(altar1Claimed?'祭壇 1 · 已啟動':'E 啟動祭壇 1',wildAltar1.x+20,wildAltar1.y-18);
+  }
+  if(room===30){ctx.textAlign='center';ctx.fillStyle='#e6dbad';ctx.font='14px sans-serif';ctx.fillText('跳躍後按 Shift 衝過斷崖',460,315);}
+  if(room===31){
+    const cycle=wildTicks%240;ctx.fillStyle=cycle>=100&&cycle<130?'#e4b577':'#65864f';ctx.fillRect(wildTrap.x,wildTrap.y+14,wildTrap.w,6);
+    if(cycle>=130&&cycle<185){ctx.fillStyle='#b1d875';for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(wildTrap.x+i*12,wildTrap.y+20);ctx.lineTo(wildTrap.x+i*12+6,wildTrap.y-4);ctx.lineTo(wildTrap.x+i*12+12,wildTrap.y+20);ctx.fill();}}
+    ctx.fillStyle='#3a5441';ctx.fillRect(wildPogoGate.x,wildPogoGate.y,wildPogoGate.w,wildPogoGate.h);ctx.strokeStyle='#b5cf92';ctx.strokeRect(wildPogoGate.x,wildPogoGate.y,wildPogoGate.w,wildPogoGate.h);
+    ctx.textAlign='center';ctx.fillStyle='#e2e6be';ctx.font='13px sans-serif';ctx.fillText('E 下劈試煉',wildPogoGate.x+22,wildPogoGate.y-8);
+  }
+  if(room===32){
+    ctx.fillStyle='#5e4935';ctx.fillRect(wildCheckpoint.x+3,wildCheckpoint.y+7,26,39);ctx.fillStyle=wildCheckpoint.activated?'#b4f2de':'#ac8a59';ctx.fillRect(wildCheckpoint.x+8,wildCheckpoint.y+12,16,20);
+    ctx.fillStyle='#d7b577';ctx.fillRect(wildCheckpoint.x,wildCheckpoint.y+3,32,5);ctx.textAlign='center';ctx.fillStyle='#e7e6c3';ctx.font='13px sans-serif';ctx.fillText(wildCheckpoint.activated?'E 休息 · G 傳送':'獵者營地休息站',wildCheckpoint.x+16,wildCheckpoint.y-10);
+  }
+  if(room===33){
+    if(!wildGauntletCleared && gauntletWait>0) for(const spawn of gauntletWaves[gauntletWave-1]) {ctx.strokeStyle='#bada7f';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(spawn.x+17,480,28,6,0,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#cbdb9a';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('輻射反應',spawn.x+17,spawn.type===2?270:433);}
+    ctx.textAlign='center';ctx.font='17px sans-serif';ctx.fillStyle='#e3d3a9';ctx.fillText(wildGauntletCleared?'三波車輪戰完成':gauntletWait>0?'第 '+gauntletWave+' 波即將來襲':'第 '+gauntletWave+' 波 · 剩餘 '+wildEnemies.filter(foe=>foe.health>0).length+' 名',480,235);
+    if(!wildGauntletCleared){ctx.fillStyle='#5a7050';ctx.fillRect(8,405,44,80);ctx.fillRect(908,405,44,80);ctx.strokeStyle='#b6c28e';ctx.lineWidth=3;for(let y=410;y<485;y+=17){ctx.beginPath();ctx.moveTo(8,y);ctx.lineTo(52,y+15);ctx.moveTo(908,y);ctx.lineTo(952,y+15);ctx.stroke();}}
+  }
+  if(room===35&&!dockEntered)drawDuelist();
+  if(room===34){
+    for(const target of wildPogoTargets){drawGear(target.x+27,target.y+9,24,ambientTime*.035);ctx.fillStyle=target.flash?'#f0ffc4':'#a6d49b';ctx.fillRect(target.x,target.y,target.w,5);}
+    ctx.fillStyle='#9bc58c';ctx.fillRect(wildPogoGoal.x,wildPogoGoal.y,wildPogoGoal.w,wildPogoGoal.h);ctx.textAlign='center';ctx.fillStyle='#e9e6bc';ctx.font='13px sans-serif';ctx.fillText('試煉終點',wildPogoGoal.x+17,wildPogoGoal.y-10);
+  }
+  if(room<34){ctx.fillStyle='#364e3f';ctx.fillRect(905,405,50,80);ctx.strokeStyle='#b6c697';ctx.lineWidth=3;ctx.strokeRect(907,407,46,76);ctx.textAlign='right';ctx.fillStyle='#e6ddbb';ctx.font='13px sans-serif';ctx.fillText(room===33?'E 故人決鬥場':'E 前往下一區',950,395);}
+}
+function drawDuelist() {
+  const x=duelist.x,y=duelistDefeated?duelist.y+15:duelist.y;
+  ctx.fillStyle='rgba(159,215,126,.12)';ctx.beginPath();ctx.arc(x+18,y+26,38,0,Math.PI*2);ctx.fill();
+  ctx.save();ctx.translate(x+18,y);ctx.scale(duelist.direction,1);
+  ctx.fillStyle=duelist.flash?'#fff3d6':'#ddd4c2';ctx.beginPath();ctx.moveTo(-9,14);ctx.lineTo(-25,45);ctx.lineTo(-14,40);ctx.lineTo(-11,50);ctx.lineTo(9,41);ctx.lineTo(8,16);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#985c72';ctx.fillRect(-11,15,22,5);ctx.fillRect(-20,35,10,5);
+  ctx.fillStyle='#617b76';ctx.fillRect(-9,17,18,23);ctx.fillStyle='#b0bdb1';ctx.fillRect(-8,1,17,15);
+  ctx.fillStyle='#374f4e';ctx.fillRect(0,7,8,6);ctx.fillStyle='#bfe98c';ctx.fillRect(3,8,4,3);
+  ctx.strokeStyle='#ba9b70';ctx.lineWidth=3;ctx.beginPath();ctx.arc(-9,5,6,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='#b8ed83';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-3,23);ctx.lineTo(2,28);ctx.lineTo(-2,32);ctx.lineTo(4,36);ctx.stroke();
+  ctx.fillStyle='#3e4240';ctx.fillRect(-8,40,6,duelistDefeated?0:14);ctx.fillRect(4,40,6,duelistDefeated?0:14);
+  ctx.strokeStyle='#eee9d5';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(9,25);
+  if(duelist.state==='guard')ctx.lineTo(26,-5);else if(duelist.state==='leap')ctx.lineTo(41,53);else ctx.lineTo(duelist.state==='thrust'?78:42,duelist.state==='thrust'?24:6);ctx.stroke();
+  ctx.strokeStyle='#b99868';ctx.lineWidth=3;ctx.beginPath();ctx.arc(13,24,6,-1.5,1.5);ctx.stroke();ctx.restore();
+  ctx.textAlign='center';ctx.font='14px sans-serif';ctx.fillStyle='#e2d0be';
+  if(duelistDefeated)ctx.fillText('她跪坐在地，仍有微弱的核心光。',480,260);
+  else if(duelist.state==='warning'||duelist.state==='counterTell'){
+    ctx.fillText(duelist.state==='counterTell'?'反擊突刺！':{dash:'細劍突刺！',leap:'空中穿刺！',guard:'招架姿勢：等待破綻'}[duelist.move],x+18,y-18);
+    ctx.fillStyle='rgba(201,145,169,.3)';ctx.fillRect(duelist.direction>0?x+36:x-100,455,100,30);
+  } else if(duelist.state==='guard'){ctx.strokeStyle='#e6c18e';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x+18,y+25,33,0,Math.PI*2);ctx.stroke();}
+}
+function drawWildMap() {
+  ctx.fillStyle='rgba(18,29,25,.98)';ctx.fillRect(0,0,960,540);ctx.textAlign='center';ctx.fillStyle='#e8d4a4';ctx.font='bold 26px sans-serif';ctx.fillText('區域 3 · 風原與獵徑',480,65);
+  ctx.fillStyle='#b4ca9a';ctx.font='14px sans-serif';ctx.fillText('此地的獵者已遭輻射感染',480,95);
+  const points=wildZones.map((_,i)=>({x:120+(i<3?i:5-i)*250,y:145+Math.floor(i/3)*125}));
+  ctx.strokeStyle='#859d6c';ctx.lineWidth=4;
+  for(let i=0;i<5;i++){if(!visitedRooms[28+i]||!visitedRooms[29+i])continue;ctx.beginPath();ctx.moveTo(points[i].x+95,points[i].y+35);ctx.lineTo(points[i+1].x+95,points[i+1].y+35);ctx.stroke();}
+  points.forEach((point,i)=>{if(!visitedRooms[28+i])return;ctx.fillStyle=room===28+i?'#626c45':'#354d3c';ctx.fillRect(point.x,point.y,190,70);ctx.strokeStyle=room===28+i?'#e3c88b':'#95ac7d';ctx.lineWidth=2;ctx.strokeRect(point.x,point.y,190,70);ctx.fillStyle='#e2d6b3';ctx.font='16px sans-serif';ctx.fillText(wildZones[i].name,point.x+95,point.y+28);ctx.fillStyle='#bace9b';ctx.font='12px sans-serif';ctx.fillText(i===4&&wildCheckpoint.activated?'休息傳送站':i===5?(wildGauntletCleared?'車輪戰已完成':'三波車輪戰'):'已探索',point.x+95,point.y+53);});
+  if(visitedRooms[34]){ctx.fillStyle=room===34?'#626c45':'#354d3c';ctx.fillRect(120,395,190,60);ctx.strokeStyle='#b5ca89';ctx.strokeRect(120,395,190,60);ctx.fillStyle='#e2d6b3';ctx.font='15px sans-serif';ctx.fillText('齒輪下劈試煉',215,422);ctx.font='12px sans-serif';ctx.fillText(wildPogoRewardClaimed?'已領取首次獎勵':'可從獵痕小徑進入',215,443);}
+  if(visitedRooms[35]){ctx.fillStyle=room===35?'#705665':'#354d3c';ctx.fillRect(620,395,190,60);ctx.strokeStyle='#c6a1ad';ctx.strokeRect(620,395,190,60);ctx.textAlign='center';ctx.fillStyle='#e2d6b3';ctx.font='15px sans-serif';ctx.fillText('故人決鬥場',715,422);ctx.font='12px sans-serif';ctx.fillText(duelistDefeated?'女同事已停下攻擊':'染疫細劍使',715,443);}
+  ctx.fillStyle='#c6cbaa';ctx.font='14px sans-serif';ctx.fillText('樹根之路可返回水果森林 · 按 Tab 或 Esc 關閉',480,500);
+}
 function draw() {
   ctx.save();
   if (shakeEnabled && shakeTimer > 0 && !paused && !mapOpen && !journalOpen && !helpOpen && !gameOver && !won) {
@@ -1619,11 +2263,6 @@ function draw() {
       ctx.fillStyle = fruit.color; ctx.beginPath(); ctx.arc(x + 35, 190 + (j % 2) * 30, 7, 0, Math.PI * 2); ctx.arc(x + 80, 160 + (j % 2) * 30, 7, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#c0a67b'; ctx.fillRect(x + 51, 320, 20, 5);
     }
-  }
-  if (room === 28) {
-    ctx.fillStyle = '#263e3b'; ctx.fillRect(0, 0, 960, 485);
-    for (let x = 60; x < 960; x += 190) { ctx.fillStyle = '#665947'; ctx.fillRect(x + 42, 90, 35, 395); ctx.fillStyle = '#81a988'; ctx.beginPath(); ctx.arc(x + 60, 95, 78, 0, Math.PI * 2); ctx.fill(); }
-    ctx.fillStyle = '#b7dcc3'; ctx.font = '18px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('樹根之路 · 新旅程的入口', 480, 160);
   }
   if (room === 6) {
     ctx.strokeStyle = '#8a5c41'; ctx.lineWidth = 22;
@@ -1711,6 +2350,8 @@ function draw() {
     const y = 430 - ((ambientTime * .45 + i * 77) % 400);
     ctx.beginPath(); ctx.arc(x, y, 10 + (i % 3) * 4, 0, Math.PI * 2); ctx.fill();
   }
+  if(isWildRoom()) drawWildBackdrop();
+  if(isDockRoom())drawDockBackdrop();
   for (const p of roomPlatforms[room]) {
     if (p.hidden > 0) {
       ctx.strokeStyle = 'rgba(201, 174, 121, .25)'; ctx.lineWidth = 1; ctx.strokeRect(p.x, p.y, p.w, p.h);
@@ -1718,7 +2359,7 @@ function draw() {
     }
     ctx.fillStyle = p.crumble && p.standTime > 25 && Math.floor(p.standTime / 5) % 2 === 0 ? '#a2734b' : '#594a36';
     ctx.fillRect(p.x, p.y, p.w, p.h);
-    ctx.fillStyle = p.moving || p.lift || p.courseMoving || p.mineMoving || p.forestMoving ? '#add6c2' : p.crumble ? '#d7a865' : '#a88451'; ctx.fillRect(p.x, p.y, p.w, 5);
+    ctx.fillStyle = p.moving || p.lift || p.courseMoving || p.mineMoving || p.forestMoving || p.dockLift ? '#add6c2' : isWildRoom() ? '#a9ad78' : p.crumble ? '#d7a865' : '#a88451'; ctx.fillRect(p.x, p.y, p.w, 5);
     ctx.fillStyle = '#302e29'; for (let x = p.x + 12; x < p.x + p.w; x += 40) ctx.fillRect(x, p.y + 9, 4, 4);
     if (p.forestMoving) { ctx.fillStyle = '#b5d8c6'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('移動藤橋', p.x + p.w / 2, p.y + 33); }
     if (p.mineMoving) { ctx.fillStyle = '#b5d8c6'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('礦車平台', p.x + p.w / 2, p.y + 33); }
@@ -1726,6 +2367,8 @@ function draw() {
     if (p.lift) { ctx.fillStyle = '#b5d8c6'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('升降平台', p.x + p.w / 2, p.y + 33); }
     if (p.crumble) { ctx.fillStyle = '#dfc49b'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('鬆動平台', p.x + p.w / 2, p.y + 33); }
   }
+  if(roamingEnemiesHere())drawWildActors();
+  if(isDockRoom())drawDockActors();
   // Amber light warns before the steam jet starts.
   if (room < 2) {
   ctx.fillStyle = '#3d352c'; ctx.fillRect(vent.x, vent.y - 7, vent.w, 7);
@@ -1916,11 +2559,15 @@ function draw() {
     drawGear(gear.x + 11, gear.y + 11, 8, ambientTime * .015);
   }
   const currentDoor = room === 0 ? door : exitDoor;
-  if (room !== 9) {
+  if (room !== 9 && !isDockRoom()) {
   ctx.fillStyle = '#302c27'; ctx.fillRect(currentDoor.x + 5, currentDoor.y, 50, 80);
   ctx.strokeStyle = room === 0 && !coreCollected ? '#72563d' : '#b6d9c3'; ctx.lineWidth = 4; ctx.strokeRect(currentDoor.x + 7, currentDoor.y + 2, 46, 78);
   ctx.fillStyle = '#ead5ae'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
   ctx.fillText(room === 0 && !coreCollected ? '需要核心' : '按 E 開門', currentDoor.x + 30, currentDoor.y - 10);
+  }
+  if((room===33&&!wildGauntletCleared)||duelistActive()) {
+    ctx.fillStyle='#3c5140';ctx.strokeStyle='#bfcb8d';ctx.lineWidth=3;
+    for(const gateX of [7,907]) {ctx.fillRect(gateX,405,46,80);for(let y=410;y<480;y+=17){ctx.beginPath();ctx.moveTo(gateX,y);ctx.lineTo(gateX+46,y+15);ctx.stroke();}}
   }
   if (room === 11) {
     const family = [{x: 480, color: '#9b6d53', label: '媽媽'}, {x: 570, color: '#657b73', label: '爸爸'}, {x: 650, color: '#b66f50', label: '小孩'}];
@@ -2140,6 +2787,7 @@ function draw() {
     ctx.fillStyle = '#594632'; ctx.beginPath(); ctx.arc(15, 0, 3, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
+  drawIronSpear();
   if (dashTimer > 0) {
     ctx.fillStyle = 'rgba(202, 224, 214, 0.4)';
     for (let i = 1; i <= 3; i++) {
@@ -2213,13 +2861,15 @@ function draw() {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
-  ctx.fillStyle = health === 1 && Math.floor(ambientTime / 20) % 2 === 0 ? '#ff9c7d' : '#ead5ae'; ctx.font = '16px sans-serif'; ctx.textAlign = 'left'; ctx.fillText((room === 28 ? '區域 3・樹根之路' : room === 27 ? '水果森林・果核王房間' : isForestRoom() ? '水果森林・' + forestNames[room - 12] : ['鍋爐室', '機械控制室', '升降機井', '蒸汽守衛房間', '廢棄溫室', '空中跑酷', '鏽蝕管道', '齒輪礦道', '失落工坊', '鐘樓鎮・墜落處', '鐘樓鎮', '小孩的家'][room]) + '   生命  ' + '♥ '.repeat(health) + '♡ '.repeat(3 - health), 24, 32);
+  if(isDockRoom()){ctx.fillStyle='rgba(15,19,25,.9)';ctx.fillRect(0,0,960,110);}
+  ctx.fillStyle = health === 1 && Math.floor(ambientTime / 20) % 2 === 0 ? '#ff9c7d' : '#ead5ae'; ctx.font = '16px sans-serif'; ctx.textAlign = 'left'; ctx.fillText((isDockRoom()?'區域 4・'+dockZones[room-36].name:isWildRoom() ? '區域 3・'+wildRoomName() : room === 27 ? '水果森林・果核王房間' : isForestRoom() ? '水果森林・' + forestNames[room - 12] : ['鍋爐室', '機械控制室', '升降機井', '蒸汽守衛房間', '廢棄溫室', '空中跑酷', '鏽蝕管道', '齒輪礦道', '失落工坊', '鐘樓鎮・墜落處', '鐘樓鎮', '小孩的家'][room]) + '   生命  ' + '♥ '.repeat(health) + '♡ '.repeat(Math.max(0, playerMaxHealth() - health)), 24, 32);
   ctx.fillStyle = '#ead5ae'; ctx.font = '14px sans-serif'; ctx.fillText(postFall && !importantGear1 ? '衝刺：損壞' : '蒸汽衝刺', 24, 57);
   ctx.textAlign = 'right'; ctx.fillText('記憶齒輪 ' + memoryGears.filter(gear => gear.collected).length + ' / ' + memoryGears.length, 936, 57); ctx.textAlign = 'left';
+  if(altar1Claimed){ctx.fillStyle=steam>=2?'#d8efb2':'#9caa91';ctx.font='13px sans-serif';ctx.fillText('V 鐵之矛 · 蒸汽 2',490,57);ctx.fillStyle='#ead5ae';ctx.font='14px sans-serif';}
   ctx.fillText('修復蒸汽 ' + '● '.repeat(steam) + '○ '.repeat(3 - steam) + (steam === 3 ? ' Q 修復' : ''), 220, 57);
   ctx.textAlign = 'right'; ctx.fillStyle = '#e7b596'; ctx.fillText(postFall ? '工具：損壞' : 'F ' + equipmentOptions.red.find(item => item.id === equipment.red).name + ' ' + toolAmmo + '/4' + (equipment.red === 'piercer' ? '（耗 2）' : ''), 936, 81); ctx.textAlign = 'left';
   ctx.fillStyle = '#e9c594';
-  const objective = room === 28 ? '目標：探索新生的樹根之路' : room === 27 ? (bossActive ? '目標：擊敗果核機械王' : '目標：返回森林深處') : isForestRoom() ? '區域 2：水果森林（' + (room - 11) + ' / 10）' : room === 11 ? (familyStage === 8 ? '目標：向家人道謝，繼續探索鐘樓鎮' : '目標：與小孩的父母交談') : room === 10 ? (familyStage >= 8 ? '目標：到右側高處，和小孩前往水果森林' : '目標：參觀鐘樓鎮，前往右側小孩的家') : room === 9 ? '目標：和小孩交談，從右側前往鐘樓鎮' : room === 0
+  const objective = isDockRoom()?(room===36?'目標：確認同伴平安，探索地下熔塢':dockShortcut?'目標：返回同伴身邊，或搭升降梯回到上層':'目標：穿過熔爐，啟動舊泵房的回程升降梯'):isWildRoom() ? (room===35?(duelistDefeated?'目標：確認女同事的狀況':'目標：阻止受輻射感染的女同事'):room===34?'目標：下劈齒輪反彈，抵達高處終點':room===33?(wildGauntletCleared?'三波車輪戰完成':'車輪戰：第 '+gauntletWave+' / 3 波'):room===30?'目標：跳躍後按 Shift 衝過斷風峽口':'目標：穿越原野，抵達獵者營地') : room === 27 ? (bossActive ? '目標：擊敗果核機械王' : '目標：返回森林深處') : isForestRoom() ? '區域 2：水果森林（' + (room - 11) + ' / 10）' : room === 11 ? (familyStage === 8 ? '目標：向家人道謝，繼續探索鐘樓鎮' : '目標：與小孩的父母交談') : room === 10 ? (familyStage >= 8 ? '目標：到右側高處，和小孩前往水果森林' : '目標：參觀鐘樓鎮，前往右側小孩的家') : room === 9 ? '目標：和小孩交談，從右側前往鐘樓鎮' : room === 0
     ? (coreCollected ? '目標：前往右側大門，按 E 進入控制室' : '目標：前往高處，取得動力核心')
     : room === 1 ? (reactorPowered ? '目標：按 E 前往升降機井' : enemy.health > 0 ? '目標：擊敗守衛（留意衝刺警示）' : !controlSwitch.active ? '目標：到平台上啟動蒸汽開關' : '目標：按 E 啟動控制台') : room === 2 ? '目標：登上井頂，按 E 進入守衛房間' : room === 4 ? '目標：登上溫室高處，查看地表' : room === 5 ? (courseFinished ? '試煉完成：按 T 再次挑戰' : '目標：穿越平台，抵達右上方終點') : room >= 6 && room <= 8 ? '目標：探索支線並避開蒸汽機關' : (!bossActive && bossDefeated ? '目標：到右側按 E 前往廢棄溫室' : '目標：擊敗蒸汽守衛');
   ctx.fillText(objective, 24, 81);
@@ -2238,7 +2888,7 @@ function draw() {
   }
   if (roomTitleTimer > 0 && bossIntroTimer === 0 && bossVictoryTimer === 0 && !mapOpen && !journalOpen && !helpOpen && !equipmentOpen && !shopOpen && !travelOpen && !paused) {
     ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(18, 23, 21, .75)'; ctx.fillRect(350, 108, 260, 44);
-    ctx.fillStyle = '#e6d4ad'; ctx.font = 'bold 20px sans-serif'; ctx.fillText(room === 28 ? '樹根之路' : room === 27 ? '果核王房間' : isForestRoom() ? forestNames[room - 12] : ['鍋爐室', '機械控制室', '升降機井', '蒸汽守衛房間', '廢棄溫室', '空中跑酷', '鏽蝕管道', '齒輪礦道', '失落工坊', '鐘樓鎮・墜落處', '鐘樓鎮', '小孩的家'][room], 480, 137);
+    ctx.fillStyle = '#e6d4ad'; ctx.font = 'bold 20px sans-serif'; ctx.fillText(isDockRoom()?dockZones[room-36].name:isWildRoom() ? wildRoomName() : room === 27 ? '果核王房間' : isForestRoom() ? forestNames[room - 12] : ['鍋爐室', '機械控制室', '升降機井', '蒸汽守衛房間', '廢棄溫室', '空中跑酷', '鏽蝕管道', '齒輪礦道', '失落工坊', '鐘樓鎮・墜落處', '鐘樓鎮', '小孩的家'][room], 480, 137);
     ctx.textAlign = 'left'; ctx.font = '14px sans-serif';
   }
   ctx.textAlign = 'right'; ctx.fillStyle = storageAvailable ? '#b4d3bb' : '#e8aa81';
@@ -2279,7 +2929,7 @@ function draw() {
       '靠近家人按 E 交談。'
     ];
     ctx.fillStyle = 'rgba(20, 25, 23, .8)'; ctx.fillRect(165, 509, 630, 25);
-    ctx.fillStyle = '#d6dec4'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(room === 28 ? '主角獨自踏上新的旅程。' : room === 27 ? '擊敗果核機械王後可以返回森林。' : isForestRoom() ? '小孩：「小心水果機械！按 E 從兩側出口前往其他區域。」' : tutorialTips[room], 480, 527);
+    ctx.fillStyle = '#d6dec4'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(isDockRoom()?'熔漿不能停留；觀察爐口預警，搭乘吊鏈平台前進。':isWildRoom() ? (room===34?'S + 滑鼠左鍵：下劈反彈；T 重試。':'原野與獵徑的敵人已被輻射感染，留意出招警示。') : room === 27 ? '擊敗果核機械王後可以返回森林。' : isForestRoom() ? '小孩：「小心水果機械！按 E 從兩側出口前往其他區域。」' : tutorialTips[room], 480, 527);
   }
   if (logTimer > 0 && !gameOver && !won) {
     ctx.fillStyle = 'rgba(25, 28, 27, .9)'; ctx.fillRect(100, 470, 760, 48);
@@ -2317,7 +2967,18 @@ function draw() {
     ctx.fillStyle = '#eff0d7'; ctx.font = '18px sans-serif'; ctx.fillText(reunionLines[reunionStage - 1], 480, 428);
     ctx.fillStyle = '#b9cdb7'; ctx.font = '14px sans-serif'; ctx.fillText('按 E 繼續（' + reunionStage + ' / ' + reunionLines.length + '）', 480, 480);
   }
-  if (mapOpen && !isForestRoom() && room !== 27 && room !== 28) {
+  if(dockArrivalActive())drawDockArrival();
+  if(duelIntroActive()) {
+    ctx.fillStyle='rgba(23,24,29,.95)';ctx.fillRect(95,345,770,165);ctx.strokeStyle='#c6a1a9';ctx.lineWidth=2;ctx.strokeRect(95,345,770,165);
+    ctx.textAlign='center';ctx.fillStyle='#ead6c0';ctx.font='bold 20px sans-serif';ctx.fillText('故人相逢',480,382);
+    ctx.fillStyle='#f0e5d2';ctx.font='18px sans-serif';ctx.fillText(duelistLines[duelIntroIndex],480,430);
+    ctx.fillStyle='#c8bfa4';ctx.font='14px sans-serif';ctx.fillText('按 E 繼續',480,485);
+  }
+  if(duelistActive()) {
+    ctx.textAlign='center';ctx.fillStyle='#e7d2cb';ctx.font='bold 15px sans-serif';ctx.fillText(duelist.phase===2?'昔日女同事 · 核心失控':'昔日女同事 · 染疫細劍使',480,115);
+    ctx.fillStyle='#3e353c';ctx.fillRect(300,122,360,14);ctx.fillStyle='#b58c9b';ctx.fillRect(303,125,354*duelist.health/duelist.maxHealth,8);
+  }
+  if (mapOpen && !isForestRoom() && room !== 27 && !isWildRoom() && !isDockRoom()) {
     ctx.fillStyle = 'rgba(15, 19, 19, .97)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.textAlign = 'center'; ctx.fillStyle = '#e8d5aa'; ctx.font = 'bold 26px sans-serif'; ctx.fillText('機械城探索地圖', 480, 65);
     ctx.font = '14px sans-serif'; ctx.fillStyle = '#a8a997'; ctx.fillText('踏入新區域後，地圖會自動記錄路線', 480, 93);
@@ -2392,7 +3053,7 @@ function draw() {
     ctx.fillStyle = '#83d7c0'; ctx.fillRect(385, 440, 9, 9); ctx.fillStyle = '#d7c8a9'; ctx.fillText('已啟動的休息站', 403, 450);
     ctx.textAlign = 'center'; ctx.fillStyle = '#a79d8a'; ctx.fillText('按 Tab 或 Esc 關閉地圖', 480, 500);
   }
-  if (mapOpen && (isForestRoom() || room === 27 || room === 28)) {
+  if (mapOpen && (isForestRoom() || room === 27)) {
     ctx.fillStyle = 'rgba(15, 19, 19, .97)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.textAlign = 'center'; ctx.fillStyle = '#e8d5aa'; ctx.font = 'bold 26px sans-serif'; ctx.fillText('水果森林探索地圖', 480, 55);
     ctx.font = '14px sans-serif'; ctx.fillStyle = '#b8c8af'; ctx.fillText('由左至右探索，已走過的區域會顯示在地圖上', 480, 82);
@@ -2413,19 +3074,21 @@ function draw() {
     }
     ctx.fillStyle = '#b7c3aa'; ctx.font = '15px sans-serif'; ctx.fillText((room === 28 ? '目前：樹根之路' : room === 27 ? '目前：果核王房間' : forestSeedPlanted ? '林緣的樹門已開啟' : forestSeedOwned ? '帶種子回林緣' : forestBossKey ? '已取得果核王房卡' : '房卡藏在森林中') + ' · 按 Tab 或 Esc 關閉地圖', 480, 490);
   }
+  if(mapOpen && isWildRoom()) drawWildMap();
+  if(mapOpen && isDockRoom())drawDockMap();
   if (travelOpen) {
     ctx.fillStyle = 'rgba(15, 18, 17, .96)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.textAlign = 'center'; ctx.fillStyle = '#eed7aa'; ctx.font = 'bold 28px sans-serif'; ctx.fillText('休息站傳送', 480, 85);
-    ctx.fillStyle = '#b8d8c6'; ctx.font = '16px sans-serif'; ctx.fillText('選擇已啟動的休息站', 480, 120);
+    ctx.fillStyle = '#b8d8c6'; ctx.font = '16px sans-serif'; ctx.fillText('選擇已啟動的休息站 · G / Esc 關閉', 480, 115);
     travelDestinations.forEach((destination, i) => {
-      const y = 125 + i * 65, active = destination.station.activated;
-      ctx.fillStyle = '#303731'; ctx.fillRect(220, y, 520, 55);
-      ctx.strokeStyle = active ? '#91c2a8' : '#615e52'; ctx.lineWidth = 1; ctx.strokeRect(220, y, 520, 55);
+      const y = 125 + i * 56, active = destination.station.activated;
+      ctx.fillStyle = '#303731'; ctx.fillRect(220, y, 520, 50);
+      ctx.strokeStyle = active ? '#91c2a8' : '#615e52'; ctx.lineWidth = 1; ctx.strokeRect(220, y, 520, 50);
       ctx.font = 'bold 18px sans-serif'; ctx.fillStyle = active ? '#e6dfbd' : '#817f74';
       ctx.fillText((i + 1) + '　' + destination.name + '　' + (active ? (destination.room === room ? '目前位置' : '可傳送') : '尚未啟動'), 480, y + 33);
     });
-    ctx.font = '15px sans-serif'; ctx.fillStyle = '#dfc797'; ctx.fillText(travelNotice || '點選地點或按 1–5；傳送後重生點會更新', 480, 520);
-    ctx.fillStyle = '#aebbaa'; ctx.fillText('按 G 或 Esc 關閉', 480, 495);
+    ctx.font = '15px sans-serif'; ctx.fillStyle = '#dfc797'; ctx.fillText(travelNotice || '點選地點或按 1–7；傳送後重生點會更新', 480, 532);
+
   }
   if (shopOpen) {
     ctx.fillStyle = 'rgba(15, 18, 17, .96)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2502,14 +3165,15 @@ function draw() {
       ctx.fillStyle = log.read ? '#e4d8bc' : '#857e70';
       ctx.fillText(log.read ? log.text : '尚未發現的紀錄', 480, 170 + i * 42);
     });
-    if (importantGear1) { ctx.fillStyle = '#e6c680'; ctx.fillText('重要齒輪 1：已修復蒸汽衝刺', 480, 455); }
-    ctx.fillStyle = '#a79d8a'; ctx.fillText('按 J 或 Esc 關閉紀錄冊', 480, 490);
+    if (importantGear1) { ctx.fillStyle = '#e6c680'; ctx.fillText('重要齒輪 1：已修復蒸汽衝刺', 480, 450); }
+    if(altar1Claimed){ctx.fillStyle='#c4e4ae';ctx.fillText('祭壇 1：生命上限 +1 · V 鐵之矛',480,475);}
+    ctx.fillStyle = '#a79d8a'; ctx.fillText('按 J 或 Esc 關閉紀錄冊', 480, 515);
   }
   if (helpOpen) {
     ctx.fillStyle = 'rgba(15, 18, 17, .95)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.textAlign = 'center'; ctx.fillStyle = '#eed7aa'; ctx.font = 'bold 28px sans-serif'; ctx.fillText('操作說明', 480, 90);
     ctx.font = '17px sans-serif'; ctx.fillStyle = '#e4d8bc';
-    const lines = ['A / D 或 ← / →：移動　　W / ↑ / 空白鍵：跳躍', '滑鼠左鍵：攻擊　　空中按住上或下：改變攻擊方向', 'Shift：衝刺　 E：互動　 Q：蓄力修復　 G：休息站傳送', 'Tab：地圖　 J：紀錄冊　 I：休息站更換裝備　 F：工具',
+    const lines = ['A / D 或 ← / →：移動　　W / ↑ / 空白鍵：跳躍', '滑鼠左鍵：攻擊　　空中按住上或下：改變攻擊方向', 'Shift：衝刺　 E：互動　 Q：蓄力修復　 G：休息站傳送', 'Tab：地圖　 J：紀錄冊　 I：休息站更換裝備　 F：工具　 V：鐵之矛',
       'Esc：暫停　　M：聲音開關', '空中貼住房間邊牆、升降井或工坊牆壁時再按跳躍：蹬牆跳。', '取得雙躍後，在空中再按一次跳躍鍵。'];
     lines.forEach((line, i) => ctx.fillText(line, 480, 150 + i * 42));
     ctx.fillStyle = '#a79d8a'; ctx.fillText('按 H 或 Esc 關閉', 480, 455);
@@ -2577,6 +3241,7 @@ function draw() {
     ctx.textAlign = 'center'; ctx.fillStyle = '#f0d5a2'; ctx.font = 'bold 32px sans-serif'; ctx.fillText('機械修復者倒下了', 480, 250);
     ctx.font = '18px sans-serif'; ctx.fillText(checkpoint.activated || elevatorCheckpoint.activated || greenhouseCheckpoint.activated || townCheckpoint.activated ? '按 R 從休息站重新出發' : '按 R 重新開始', 480, 290);
   }
+  if(dockFallTick>=0)drawDockFall();
 }
 let last = 0, accumulator = 0;
 function frame(time){ if (!last) last=time; accumulator += Math.min(time-last,100); last=time; while(accumulator >= 1000/60){update();ambientTime++;if(won) endingTime++;accumulator-=1000/60} draw();requestAnimationFrame(frame); }

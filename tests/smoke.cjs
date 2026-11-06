@@ -385,7 +385,6 @@ jumpRightUntil(720);
 assert.equal(route.run('player.grounded && player.y===293'), true, 'fourth platform is reachable');
 jumpRightUntil(860);
 assert.equal(route.run('courseFinished'), true, 'the complete course is reachable with normal jumps');
-console.log('All exploration, parkour, equipment, economy, healing, death and respawn smoke checks passed.');
 
 // Wall jumps work against solid walls and retain the separate double jump.
 const wallJump = createGame();
@@ -938,3 +937,277 @@ assert.equal(reunion.run('reunionStage===5 && !reunionActive()'), true, 'the reu
 const noEarlyReunion = createGame();
 noEarlyReunion.run('postFall=true;familyStage=8;changeRoom(10)');
 assert.equal(noEarlyReunion.run('reunionStage'), 0, 'the reunion does not trigger before reaching the next area');
+
+// Region 3 is a connected set of plains and hunter paths, with a dash-gated canyon.
+const wildRoute = createGame();
+wildRoute.run('postFall=true;familyStage=8;importantGear1=true;forestSeedPlanted=true;farewellStage=5;changeRoom(28);invulnerability=99999');
+assert.equal(wildRoute.run('wildZones.length'),6);
+for (let expected=28;expected<=32;expected++) {
+  assert.equal(wildRoute.run('room'),expected);
+  assert.equal(wildRoute.run('wildEnemies.every(foe=>foe.irradiated)'),true,'all region 3 enemies are irradiated');
+  wildRoute.run('draw();mapOpen=true;draw();mapOpen=false;wildEnemies.forEach(foe=>foe.health=0)');
+  wildRoute.key('KeyD'); let flight=0;
+  for(let tick=0;tick<650 && wildRoute.run('player.x')<880;tick++) {
+    if(flight && wildRoute.run('player.grounded')){wildRoute.keyup('Space');flight=0;}
+    const nearGap=wildRoute.run(`(() => {
+      if(!player.grounded || player.y+player.h!==485)return false;
+      const floor=roomPlatforms[room].find(p=>p.y===485 && player.x+player.w>p.x && player.x<p.x+p.w);
+      return !!floor && floor.x+floor.w<960 && player.x>=floor.x+floor.w-22;
+    })()`);
+    if(!flight && nearGap){wildRoute.key('Space');flight=1;}
+    if(flight){if(expected===30 && flight===7)wildRoute.key('ShiftLeft');flight++;}
+    wildRoute.run('update()');
+  }
+  wildRoute.keyup('KeyD');wildRoute.keyup('Space');wildRoute.keyup('ShiftLeft');
+  assert.ok(wildRoute.run('player.x')>=880,`region 3 room ${expected} is traversable`);
+  wildRoute.key('KeyE');wildRoute.run('update()');
+}
+assert.equal(wildRoute.run('room===33 && gauntletWave===1'),true,'the hunter path leads to the gauntlet');
+
+// The optional down-slash course can be completed with three timed sword bounces.
+const pogoCourse=createGame();pogoCourse.run('postFall=true;importantGear1=true;familyStage=8;changeRoom(34);invulnerability=99999');
+pogoCourse.key('KeyD');for(let i=0;i<40 && pogoCourse.run('player.x')<125;i++)pogoCourse.run('update()');
+pogoCourse.key('Space');pogoCourse.key('KeyS');let pogoBounces=0;
+for(let tick=0;tick<250 && !pogoCourse.run('wildPogoFinished');tick++) {
+  if(pogoCourse.run('attackCooldown===0 && wildPogoTargets.some(t=>player.y+player.h<=t.y+t.h && overlaps({x:player.x+2,y:player.y+player.h,w:26,h:48},t))')){pogoCourse.attack();pogoBounces++;}
+  pogoCourse.run('update()');
+}
+assert.equal(pogoCourse.run('wildPogoFinished && wildPogoRewardClaimed && money===15'),true,'the down-slash course awards its first completion');
+assert.equal(pogoBounces,3,'the course uses all three down-slash targets');
+pogoCourse.run('update();update()');assert.equal(pogoCourse.run('money'),15,'standing at the goal does not duplicate the reward');
+assert.equal(createGame(pogoCourse.storageData).run('wildPogoRewardClaimed'),true,'the course reward persists');
+pogoCourse.key('KeyT');assert.equal(pogoCourse.run('player.x===70 && !wildPogoFinished'),true,'T retries the course');
+pogoCourse.run('player.x=400;player.y=650;update()');assert.equal(pogoCourse.run('player.x===70 && health===3'),true,'a missed jump restarts without life loss');
+
+// The gauntlet locks its exit and sends one, two, then three infected hunters.
+const gauntlet=createGame();gauntlet.run('postFall=true;importantGear1=true;familyStage=8;changeRoom(33);invulnerability=99999');
+gauntlet.run('player.x=0;player.y=443;player.vx=0');gauntlet.key('KeyE');gauntlet.run('update()');
+assert.equal(gauntlet.run('room'),33,'the active gauntlet exit is locked');
+for(let wave=1;wave<=3;wave++) {
+  gauntlet.run('for(let i=0;i<95 && gauntletWait>0;i++)update()');
+  assert.equal(gauntlet.run('wildEnemies.filter(foe=>foe.health>0).length'),wave,`wave ${wave} has the expected enemy count`);
+  for(let foeIndex=0;foeIndex<wave;foeIndex++) {
+    gauntlet.run(`{wildEnemies.forEach(e=>{e.state='recover';e.timer=999;e.shot.active=false});const testFoe=wildEnemies[${foeIndex}];testFoe.health=1;player.x=testFoe.x-45;player.y=testFoe.y;player.vx=0;player.vy=0;player.facing=1;attackCooldown=0;keys.clear()}`);
+    gauntlet.attack();gauntlet.run('update()');
+    assert.equal(gauntlet.run(`wildEnemies[${foeIndex}].health`),0,'the sword can defeat each hunter');
+  }
+  gauntlet.run('update()');
+}
+assert.equal(gauntlet.run('wildGauntletCleared'),true,'all three waves clear the gauntlet');
+const gauntletBalance=gauntlet.run('money');gauntlet.run('changeRoom(32);changeRoom(33);update()');
+assert.equal(gauntlet.run('money'),gauntletBalance,'re-entry does not duplicate the clear reward');
+assert.equal(createGame(gauntlet.storageData).run('wildGauntletCleared'),true,'gauntlet completion persists');
+gauntlet.run('player.x=0;player.y=443;player.vx=0');gauntlet.key('KeyE');gauntlet.run('update()');
+assert.equal(gauntlet.run('room'),32,'the exit opens after all waves');
+
+// Hunters telegraph their ranged attack, and the camp joins the existing travel network.
+const wildCombat=createGame();wildCombat.run('postFall=true;familyStage=8;importantGear1=true;changeRoom(28);wildEnemies[0].health=0;wildEnemies[1].cooldown=0;wildEnemies[1].x=680;player.x=550;player.y=443;player.vx=0;player.grounded=true;invulnerability=99999;update()');
+assert.equal(wildCombat.run('wildEnemies[1].state'),'warning','the infected archer telegraphs its shot');
+wildCombat.run('for(let i=0;i<55;i++)update()');assert.equal(wildCombat.run('wildEnemies[1].shot.active'),true,'the archer fires after warning');
+wildCombat.run('changeRoom(32);player.x=wildCheckpoint.x;player.y=443;player.vx=0;player.grounded=true;health=1;update()');
+assert.equal(wildCombat.run('health===3 && wildCheckpoint.activated && activeCheckpoint==="wild" && wildEnemies.length===0'),true,'camp is a safe rest station');
+assert.equal(createGame(wildCombat.storageData).run('room===32 && wildCheckpoint.activated && importantGear1'),true,'camp is a saved respawn point');
+wildCombat.run('townCheckpoint.activated=true');wildCombat.key('KeyG');wildCombat.key('Digit4');wildCombat.run('for(let i=0;i<RESPAWN_DURATION;i++)update()');
+wildCombat.key('KeyG');wildCombat.key('Digit6');
+assert.equal(wildCombat.run('room===32 && activeCheckpoint==="wild"'),true,'option six returns to the hunter camp');
+
+// The canyon can also be crossed on the return journey with the repaired dash.
+const returnCanyon=createGame();returnCanyon.run('postFall=true;importantGear1=true;familyStage=8;changeRoom(30);wildEnemies.forEach(foe=>foe.health=0);player.x=820;player.y=443;player.grounded=true;invulnerability=99999');
+returnCanyon.key('KeyA');let returnFlight=0;
+for(let tick=0;tick<500 && returnCanyon.run('player.x')>50;tick++){
+  if(returnFlight && returnCanyon.run('player.grounded')){returnCanyon.keyup('Space');returnFlight=0;}
+  if(!returnFlight && returnCanyon.run('player.grounded && player.x<=563 && player.x>350')){returnCanyon.key('Space');returnFlight=1;}
+  if(returnFlight){if(returnFlight===7)returnCanyon.key('ShiftLeft');returnFlight++;}
+  returnCanyon.run('update()');
+}
+returnCanyon.keyup('KeyA');returnCanyon.keyup('Space');
+assert.ok(returnCanyon.run('player.x')<=50,'the dash canyon has a traversable return route');
+
+// The shared tool projectile can damage irradiated enemies independently of sword combat.
+const wildTool=createGame();wildTool.run('changeRoom(28);wildEnemies[0].state="recover";wildEnemies[0].timer=999;wildEnemies[0].x=350;wildEnemies[1].health=0;player.x=275;player.y=443;player.facing=1;player.vx=0;toolAmmo=4;invulnerability=99999');
+wildTool.key('KeyF');wildTool.run('for(let i=0;i<12;i++)update()');
+assert.equal(wildTool.run('wildEnemies[0].health'),1,'a tool hit damages a region 3 enemy');
+
+// Altar 1 is reachable by a normal jump and grants its permanent reward once.
+const altar=createGame();
+altar.run('postFall=true;familyStage=8;changeRoom(29);wildEnemies.forEach(e=>e.health=0);player.x=210;player.y=443;player.grounded=true;invulnerability=99999');
+altar.key('Space');altar.run('for(let i=0;i<65;i++)update()');altar.keyup('Space');
+assert.equal(altar.run('player.grounded && player.y===363'),true,'a basic jump reaches altar 1');
+altar.key('KeyE');altar.run('update();draw()');
+assert.equal(altar.run('altar1Claimed && health===4 && playerMaxHealth()===4'),true,'the altar grants one maximum life and heals');
+altar.key('KeyE');altar.run('update()');
+assert.equal(altar.run('playerMaxHealth()'),4,'repeated interaction cannot stack the reward');
+altar.run('changeRoom(32);player.x=wildCheckpoint.x;player.y=443;player.grounded=true;health=1;update()');
+assert.equal(altar.run('health'),4,'rest stations restore the new health maximum');
+const altarReload=createGame(altar.storageData);
+assert.equal(altarReload.run('altar1Claimed && health===4'),true,'the altar reward survives reload');
+altar.run('health=3;steam=3');altar.key('KeyQ');altar.run('for(let i=0;i<HEAL_DURATION;i++)update()');
+assert.equal(altar.run('health===4 && steam===0'),true,'steam repair heals the fourth life');
+altarReload.buttons['#restart-button']._click();
+assert.equal(altarReload.run('!altar1Claimed && health===3'),true,'a new game clears the altar reward');
+
+// The iron-chain spear follows facing, pierces, and damages each target only once.
+const spear=createGame();
+spear.run('postFall=true;familyStage=8;changeRoom(28);wildEnemies.forEach(e=>e.health=0);steam=3');
+spear.key('KeyV');spear.run('update()');
+assert.equal(spear.run('!ironSpear.active && steam===3'),true,'the spear is locked before the altar');
+spear.run('altar1Claimed=true;player.x=260;player.y=443;player.grounded=true;player.facing=1;invulnerability=99999;wildEnemies.forEach((e,i)=>{e.x=350+i*100;e.y=445;e.health=5;e.state="recover";e.timer=999;e.shot.active=false})');
+spear.key('KeyV');spear.run('update()');
+assert.equal(spear.run('ironSpear.active && ironSpear.vx===14 && steam===1'),true,'right-facing cast costs two steam');
+spear.run('for(let i=0;i<35;i++)update();draw()');
+assert.equal(spear.run('wildEnemies.every(e=>e.health===2)'),true,'a single cast pierces enemies for three damage without repeat hits');
+spear.run('resetIronSpear();player.facing=-1;steam=3');spear.key('KeyV');spear.run('update()');
+assert.equal(spear.run('ironSpear.active && ironSpear.vx===-14 && ironSpear.x<player.x'),true,'left-facing cast travels left');
+const spearX=spear.run('ironSpear.x');spear.key('Tab');spear.run('update()');
+assert.equal(spear.run('ironSpear.x'),spearX,'the map pauses the projectile');spear.key('Tab');
+spear.run('changeRoom(29)');assert.equal(spear.run('ironSpear.active'),false,'changing rooms clears the chain spear');
+spear.run('steam=1');spear.key('KeyV');spear.run('update()');
+assert.equal(spear.run('!ironSpear.active && steam===1'),true,'insufficient steam cannot cast');
+spear.run('changeRoom(34);steam=3');spear.key('KeyV');spear.run('update()');spear.key('KeyT');
+assert.equal(spear.run('ironSpear.active'),false,'retrying the pogo course clears the projectile');
+
+// The former coworker has a dedicated arena, dialogue, telegraphs and a persistent victory.
+const coworker=createGame();
+coworker.run('postFall=true;familyStage=8;importantGear1=true;wildGauntletCleared=true;changeRoom(33);player.x=door.x;player.y=443;player.grounded=true');
+coworker.key('KeyE');coworker.run('update();draw()');
+assert.equal(coworker.run('room===35 && duelIntroActive() && duelist.irradiated'),true,'the cleared gauntlet leads to the infected coworker arena');
+const introX=coworker.run('player.x');coworker.key('KeyD');coworker.run('update()');
+assert.equal(coworker.run('player.x'),introX,'the reunion dialogue pauses movement');
+for(let i=0;i<4;i++)coworker.key('KeyE');
+assert.equal(coworker.run('duelistActive()'),true,'the fight starts after the reunion dialogue');
+coworker.run('invulnerability=99999;player.x=0;player.y=443;player.vx=0');coworker.key('KeyE');coworker.run('update()');
+assert.equal(coworker.run('room'),35,'the arena exit stays locked during the fight');
+coworker.run('duelist.timer=1;update()');assert.equal(coworker.run('duelist.state'),'warning','the thrust has a visible warning');
+coworker.run('for(let i=0;i<48;i++)update()');assert.equal(coworker.run('duelist.state'),'thrust');
+const thrustX=coworker.run('duelist.x');coworker.run('update()');assert.ok(coworker.run('duelist.x')<thrustX,'the thrust moves toward the player');
+coworker.run('duelist.state="warning";duelist.move="leap";duelist.timer=1;update();update()');
+assert.ok(coworker.run('duelist.y')<431,'the aerial attack leaves the ground');
+coworker.run('for(let i=0;i<50;i++)update()');assert.equal(coworker.run('duelist.y'),431,'the aerial attack lands');
+coworker.run('duelist.x=650;duelist.state="guard";duelist.timer=999;player.x=600;player.y=443;player.facing=1;player.vx=0;player.grounded=true;attackCooldown=0');
+coworker.attack();coworker.run('update()');
+assert.equal(coworker.run('duelist.health===12 && duelist.state==="counterTell"'),true,'a guarded melee hit triggers a counter instead of damage');
+coworker.run('duelist.state="guard";duelist.timer=999;altar1Claimed=true;steam=3');coworker.key('KeyV');coworker.run('for(let i=0;i<4;i++)update()');
+assert.equal(coworker.run('duelist.health===9 && duelist.state==="recover" && steam===1'),true,'the iron spear breaks guard and deals three damage');
+coworker.run('resetIronSpear();duelist.health=1;duelist.x=650;duelist.y=431;duelist.state="recover";duelist.timer=999;player.x=600;player.y=443;player.facing=1;player.vx=0;attackCooldown=0');
+coworker.attack();coworker.run('update();draw()');
+assert.equal(coworker.run('duelistDefeated && !duelistActive() && duelist.health===0 && dockFallPending'),true,'winning stops the coworker and schedules the collapse');
+assert.equal(createGame(coworker.storageData).run('duelistDefeated'),true,'the boss victory persists');
+coworker.run('player.x=0;player.y=443;player.vx=0');coworker.key('KeyE');coworker.run('update()');
+assert.equal(coworker.run('room===35 && dockFallTick===1'),true,'victory starts the collapse instead of allowing an early exit');
+const collapseMoney=coworker.run('money');
+coworker.key('Escape');coworker.run('update()');assert.equal(coworker.run('dockFallTick'),1,'the collapse can be paused');coworker.key('Escape');
+coworker.key('KeyV');coworker.attack();coworker.key('KeyD');coworker.run('for(let i=0;i<90;i++)update();draw()');
+assert.equal(coworker.run('!ironSpear.active && !attackQueued && player.x===0'),true,'combat and movement are locked during the fall');
+const interruptedFall=createGame(coworker.storageData);interruptedFall.run('update()');
+assert.equal(interruptedFall.run('room===35 && dockFallTick===1'),true,'reloading an unfinished fall resumes the transition');
+coworker.run('for(let i=0;i<100;i++)update();draw()');
+assert.equal(coworker.run('room===36 && dockEntered && !dockFallPending && dockArrivalActive() && dockCheckpoint.activated && activeCheckpoint==="dock"'),true,'both characters land at the region 4 safe station');
+assert.equal(coworker.run('money'),collapseMoney,'the transition keeps the boss reward');
+assert.ok(coworker.labels.some(text=>text.includes('下面竟然還有一座工廠')),'arrival includes the coworker dialogue');
+const arrivalReload=createGame(coworker.storageData);
+assert.equal(arrivalReload.run('room===36 && dockArrivalActive()'),true,'unfinished arrival dialogue survives reload');
+for(let i=0;i<3;i++)coworker.key('KeyE');
+coworker.run('player.x=505;player.y=443;player.vx=0');coworker.key('KeyE');coworker.run('update()');
+assert.ok(coworker.run('logMessage').includes('等你'),'the coworker remains in the safe landing room');
+coworker.run('gameOver=true;resetGame();respawnTimer=0');
+assert.equal(coworker.run('room===36 && !dockArrivalActive() && dockFallTick===-1'),true,'death respawns in region 4 without replaying the fall');
+coworker.run('player.x=0;player.y=443;player.vx=0');coworker.key('KeyE');coworker.run('update()');
+assert.equal(coworker.run('room'),36,'the collapsed entrance cannot lead back to the boss');
+
+// The furnace region has infected enemies, readable hazards and a reversible route.
+const docks=createGame(coworker.storageData);
+docks.run('changeRoom(37);invulnerability=99999');
+assert.equal(docks.run('wildEnemies.length===3 && wildEnemies.every(e=>e.irradiated)'),true,'region 4 retains radiation on all enemies');
+docks.run('wildEnemies.forEach(e=>{e.state="recover";e.timer=9999});wildEnemies[0].x=520;player.x=475;player.y=443;player.facing=1;player.grounded=true;attackCooldown=0');
+docks.attack();docks.run('update()');assert.equal(docks.run('wildEnemies[0].health'),3,'the sword damages the infected foundry worker');
+docks.run('wildEnemies.forEach(e=>e.health=0);wildTicks=110;draw()');
+assert.ok(docks.labels.includes('爐口即將噴發'),'the furnace vent has a visible warning');
+docks.run('health=4;invulnerability=0;wildTicks=134;player.x=565;player.y=443;player.vx=0;update()');
+assert.equal(docks.run('health'),3,'the active furnace jet deals damage');
+docks.run('invulnerability=0;dashTimer=0;player.x=350;player.y=470;player.vy=3;update()');
+assert.equal(docks.run('health===2 && player.x===70 && player.y===443'),true,'lava deals one hit and rescues to a safe bank');
+
+// Traverse the molten bridge using normal movement and jumps.
+docks.run('changeRoom(37);wildEnemies.forEach(e=>e.health=0);invulnerability=99999');
+docks.key('KeyD');let dockFlight=0;
+for(let tick=0;tick<500 && docks.run('player.x')<885;tick++){
+  if(dockFlight&&docks.run('player.grounded')){docks.keyup('Space');dockFlight=0;}
+  if(!dockFlight&&docks.run('player.grounded && ((player.x>=270&&player.x<430)||(player.x>=600&&player.x<750))')){docks.key('Space');dockFlight=1;}
+  if(dockFlight)dockFlight++;
+  docks.run('update()');
+}
+docks.keyup('KeyD');docks.keyup('Space');assert.ok(docks.run('player.x')>=885,'the furnace bridge is traversable');
+docks.key('KeyE');docks.run('update()');assert.equal(docks.run('room'),38);
+docks.run('let testDockRescues=0;const originalDockRescue=dockLavaRescue;dockLavaRescue=()=>{const rescued=originalDockRescue();if(rescued)testDockRescues++;return rescued;}');
+
+function dockWalkTo(target){
+  const right=docks.run('player.x')<target,code=right?'KeyD':'KeyA';docks.key(code);
+  for(let i=0;i<200&&(right?docks.run('player.x')<target:docks.run('player.x')>target);i++)docks.run('update()');
+  docks.keyup(code);docks.run('player.vx=0');
+}
+function dockJumpTo(target,dash=false){
+  if(dash)docks.run('for(let i=0;i<65&&dashCooldown>0;i++)update()');
+  const right=docks.run('player.x')<target,code=right?'KeyD':'KeyA';
+  docks.key('Space');if(Math.abs(docks.run('player.x')-target)>5)docks.key(code);
+  for(let i=0;i<100;i++){
+    if(dash&&i===7)docks.key('ShiftLeft');
+    if(right?docks.run('player.x')>=target:docks.run('player.x')<=target){docks.keyup(code);docks.run('player.vx=0');}
+    docks.run('update()');if(i>3&&docks.run('player.grounded'))break;
+  }
+  docks.keyup('Space');docks.keyup(code);docks.keyup('ShiftLeft');docks.run('player.vx=0');
+}
+docks.run('wildEnemies.forEach(e=>e.health=0)');
+dockWalkTo(240);dockJumpTo(docks.run('player.x'));
+assert.equal(docks.run('player.y'),363,'the first shaft ledge is reachable with a basic jump');
+dockWalkTo(305);dockJumpTo(435);
+assert.equal(docks.run('player.y'),288,'the second shaft ledge is reachable without wall jump');
+dockJumpTo(620,true);
+assert.equal(docks.run('player.grounded && player.x>580 && player.x<695'),true,'a jump and dash reach the chain platform');
+dockJumpTo(755);
+assert.equal(docks.run('player.y'),303,'the lift route reaches the exit ledge');
+dockWalkTo(885);docks.key('KeyE');docks.run('update()');assert.equal(docks.run('room'),39,'the shaft is traversable with the restored dash');
+docks.run('changeRoom(38);wildEnemies.forEach(e=>e.health=0)');
+dockJumpTo(docks.run('player.x'));assert.equal(docks.run('player.y'),363,'the right bank has a reachable return step');
+dockJumpTo(755);assert.equal(docks.run('player.y'),303,'the return step reaches the high ledge');
+dockJumpTo(620,true);assert.equal(docks.run('player.grounded && player.x>580 && player.x<695'),true,'the return jump reaches the lift');
+dockJumpTo(435,true);assert.equal(docks.run('player.y'),288,'the return jump reaches the center ledge');
+dockJumpTo(305);dockWalkTo(200);dockWalkTo(25);
+docks.key('KeyE');docks.run('update()');assert.equal(docks.run('room'),37,'the shaft can be traversed on the return journey');
+assert.equal(docks.run('testDockRescues'),0,'both shaft routes finish without a lava reset');
+docks.run('changeRoom(38);wildEnemies.forEach(e=>e.health=0)');
+
+// Boarding the chain lift carries the player vertically without clipping.
+docks.run('wildEnemies.forEach(e=>e.health=0);{const p=roomPlatforms[38].find(p=>p.dockLift);player.x=p.x+30;player.y=p.y-player.h;player.vx=0;player.vy=0;player.grounded=true;}');
+const liftStart=docks.run('player.y');docks.run('for(let i=0;i<35;i++)update()');
+assert.ok(docks.run('player.y')<liftStart-35,'the chain platform carries a standing player upward');
+assert.equal(docks.run('player.grounded'),true,'the player stays grounded on the lift');
+
+// Region 4 enemies have their own hammer wave, lobbed slag and vertical beam.
+const foundryFoes=createGame(coworker.storageData);
+for(let type=0;type<3;type++){
+  foundryFoes.run(`changeRoom(37);invulnerability=99999;wildEnemies.forEach(e=>e.health=0);{const foe=wildEnemies[${type===0?0:type===1?1:2}];foe.health=foe.maxHealth;foe.state='patrol';foe.cooldown=0;player.x=foe.x-60;player.y=443;player.vx=0;player.grounded=true;}update();draw()`);
+  assert.equal(foundryFoes.run(`wildEnemies[${type}].state`),'warning',`foundry enemy ${type} telegraphs its attack`);
+  foundryFoes.run(`for(let i=0;i<${type===0?48:type===1?65:70};i++)update()`);
+  assert.equal(foundryFoes.run(`wildEnemies[${type}].shot.kind`),['shock','slag','beam'][type],'each enemy uses a distinct attack');
+  if(type===0){const waveX=foundryFoes.run('wildEnemies[0].shot.x');foundryFoes.run('update()');assert.ok(foundryFoes.run('wildEnemies[0].shot.x')<waveX,'hammer shock travels along the floor');}
+  if(type===1){assert.ok(foundryFoes.run('wildEnemies[1].shot.vy')<0,'slag starts on an upward arc');foundryFoes.run('for(let i=0;i<65;i++)update()');assert.equal(foundryFoes.run('wildEnemies[1].shot.kind'),'burn','slag leaves a temporary burning patch');}
+  if(type===2){assert.equal(foundryFoes.run('wildEnemies[2].shot.w===24 && wildEnemies[2].shot.h>100'),true,'the drone fires a narrow vertical heat beam');foundryFoes.run('for(let i=0;i<30;i++)update()');assert.equal(foundryFoes.run('wildEnemies[2].shot.active'),false,'the beam ends after its attack window');}
+}
+
+// The power lever enables a two-way shortcut, saved independently of the fall.
+docks.run('changeRoom(39);wildEnemies.forEach(e=>e.health=0);player.x=door.x;player.y=443;player.vx=0');docks.key('KeyE');docks.run('update()');
+assert.equal(docks.run('room===39 && !dockShortcut'),true,'the return lift needs power');
+docks.run('player.x=dockLever.x;player.y=443;player.vx=0');docks.key('KeyE');docks.run('update()');
+assert.equal(docks.run('dockShortcut'),true,'the pump room lever powers the shortcut');
+docks.run('player.x=door.x;player.y=443;player.vx=0');docks.key('KeyE');docks.run('update()');
+assert.equal(docks.run('room===35 && !duelistActive() && !duelIntroActive() && dockFallTick===-1'),true,'the return lift reaches the cleared arena without another collapse');
+docks.run('player.x=door.x;player.y=443;player.vx=0');docks.key('KeyE');docks.run('update()');assert.equal(docks.run('room'),39,'the powered lift works in both directions');
+assert.equal(createGame(docks.storageData).run('dockShortcut && dockEntered'),true,'the shortcut persists after reload');
+docks.run('changeRoom(36);player.x=dockCheckpoint.x;player.y=443;wildCheckpoint.activated=true;player.vx=0');docks.key('KeyG');docks.key('Digit6');docks.run('respawnTimer=0');
+docks.key('KeyG');docks.key('Digit7');assert.equal(docks.run('room===36 && activeCheckpoint==="dock"'),true,'the seventh travel option returns to region 4');
+docks.run('respawnTimer=0;mapOpen=true;draw();mapOpen=false;travelOpen=true;draw();travelOpen=false');
+assert.ok(docks.labels.includes('區域 4 · 地下熔塢'),'region 4 has its own map');
+assert.equal(createGame({'steam-city-progress-v1':JSON.stringify({postFall:true,familyStage:8,duelistDefeated:true})}).run('room===35 && dockFallPending'),true,'older boss victories receive the new story transition');
+docks.buttons['#restart-button']._click();assert.equal(docks.run('!dockEntered && !dockShortcut && !dockCheckpoint.activated && dockFallTick===-1'),true,'new game clears region 4 progression');
+
+console.log('All exploration, story, combat, parkour, gauntlet, altar, spear, economy, equipment and save checks passed.');
